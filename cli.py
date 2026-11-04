@@ -1,8 +1,10 @@
-"""SwarmGuard command-line interface (Phase 1 commands).
+"""SwarmGuard command-line interface.
 
 Usage:
     python cli.py list-scenarios
     python cli.py run --scenario single_hijack [--seed 3] [--plot] [--csv out.csv]
+    python cli.py detect --scenario rigid_swarm_shift [--seed 5000]
+    python cli.py calibrate [--seeds 200] [--scenario clean_baseline] [--target 0.01]
 
 All numbers printed are simulation results, not measurements of real drones.
 """
@@ -22,8 +24,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402  (must come after matplotlib.use)
 import numpy as np  # noqa: E402
 
+from analysis.calibration import calibrate, load_calibration, save_calibration  # noqa: E402
+from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
 from attacks.scenarios import Scenario, get_scenario, list_scenarios  # noqa: E402
+from config import DetectorConfig  # noqa: E402
 from core.schema import SimResult  # noqa: E402
+from detection import build_detectors  # noqa: E402
 from simulation.swarm import simulate  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -119,6 +125,89 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fmt_drones(drones: set[int]) -> str:
+    """Set of indices -> "Drone 02, Drone 06" (or "none")."""
+    return ", ".join(drone_label(i) for i in sorted(drones)) or "none"
+
+
+def _fmt_ratio(value: float) -> str:
+    """0.5 -> "0.50"; NaN (undefined, e.g. precision with no alarms) -> "-"."""
+    return "-" if value != value else f"{value:.2f}"  # WHY: NaN is the only value != itself
+
+
+def _metrics_lines(m: RunMetrics, alarmed: set[int]) -> list[str]:
+    """Human-readable lines describing one detector's RunMetrics."""
+    if not m.is_attack_run:
+        verdict = "false alarm" if m.clean_false_alarm else "no anomaly detected"
+        return [f"    no attack in this run: {verdict}",
+                f"    drones in alarm:   {_fmt_drones(alarmed)}"]
+    delay = f"{m.detection_delay:.1f} s" if m.detection_delay is not None else "-"
+    return [
+        f"    detected:          {'yes' if m.detected else 'no'} (delay {delay})",
+        f"    identified:        {_fmt_drones(alarmed)}",
+        f"    false-alarm drones: {_fmt_drones(m.false_alarm_drones)}",
+        f"    precision/recall:  {_fmt_ratio(m.id_precision)} / {_fmt_ratio(m.id_recall)}",
+        f"    swarm-level alarm: {'yes' if m.swarm_level_detected else 'no'}",
+    ]
+
+
+def cmd_detect(args: argparse.Namespace) -> int:
+    """Run one scenario through detectors A, B and C and print their metrics."""
+    scenario = get_scenario(args.scenario, seed=args.seed, centre_gain=args.centre_gain)
+    result = simulate(scenario.sim, scenario.attack)
+    calibration = load_calibration(scenario.sim)
+    det_cfg = calibration.thresholds if calibration else DetectorConfig()
+    source = (f"calibrated ({calibration.created_utc})" if calibration
+              else "analytical defaults (run `calibrate` to measure them)")
+    print(f"Scenario: {scenario.title} ({scenario.key}), seed {scenario.sim.seed}")
+    print(f"Attacked drones (truth, evaluation view): {_fmt_drones(result.attacked_drones())}")
+    print(f"Thresholds: {source}")
+    print("Simulation result:")
+    for detector in build_detectors(det_cfg, scenario.sim):
+        run = detector.run(result.observed())
+        metrics = compute_metrics(result, run)
+        expected = scenario.expected.get(detector.short, "-")
+        print(f"  [{detector.short}] {detector.name}  (expected: {expected})")
+        onset = metrics.onset
+        for line in _metrics_lines(metrics, run.alarm_drones(after=onset)):
+            print(line)
+    return 0
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    """Calibrate thresholds on clean runs, print the table and save JSON."""
+    scenario = get_scenario(args.scenario)
+    if scenario.attack.type != "none":
+        # WHY allowed: calibration only uses the scenario's swarm settings
+        # (SimConfig) and always flies clean; the attack is never simulated.
+        print(f"Note: {scenario.key}'s attack ({scenario.attack.type}) is ignored; "
+              "calibration flies its swarm configuration with no attack.")
+
+    shown = {"last": -1}
+
+    def show(fraction: float) -> None:
+        # WHY only every 5 %: printing after every run would flood the terminal.
+        step = int(fraction * 20)
+        if step != shown["last"]:
+            shown["last"] = step
+            print(f"\r  progress {step * 5:3d} %", end="", flush=True)
+
+    print(f"Calibrating on {args.seeds} clean runs of {scenario.key} "
+          f"(target false-alarm rate {args.target:.1%})...")
+    result = calibrate(scenario.sim, n_seeds=args.seeds, include_manoeuvres=not args.no_manoeuvres,
+                       target_fa=args.target, progress=show)
+    print()
+    table = result.table()
+    for col in ("fa_rate", "ci_low", "ci_high"):
+        table[col] = table[col].map(lambda v: f"{v:.1%}")
+    print("Simulation result:")
+    print(table.to_string(index=False))
+    for note in result.notes:
+        print(f"  note: {note}")
+    print(f"Seeds {result.seed_start}-{result.seed_end}; saved to {save_calibration(result)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser with its subcommands."""
     parser = argparse.ArgumentParser(prog="swarmguard", description="SwarmGuard command line")
@@ -134,6 +223,21 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--plot", action="store_true", help="save a PNG to data/plots/")
     run.add_argument("--csv", default=None, help="write the run to this CSV file")
     run.set_defaults(func=cmd_run)
+
+    detect = sub.add_parser("detect", help="run detectors A, B, C on one scenario")
+    detect.add_argument("--scenario", required=True, help="scenario key (see list-scenarios)")
+    detect.add_argument("--seed", type=int, default=None, help="override the scenario seed")
+    detect.add_argument("--centre-gain", type=float, default=None, dest="centre_gain",
+                        help="override closed-loop centre_gain")
+    detect.set_defaults(func=cmd_detect)
+
+    cal = sub.add_parser("calibrate", help="calibrate detector thresholds on clean runs")
+    cal.add_argument("--seeds", type=int, default=200, help="number of clean runs (default 200)")
+    cal.add_argument("--scenario", default="clean_baseline", help="scenario whose swarm settings are calibrated (its attack is ignored)")
+    cal.add_argument("--target", type=float, default=0.01, help="target false-alarm rate per run")
+    cal.add_argument("--no-manoeuvres", action="store_true", dest="no_manoeuvres",
+                     help="do not add legitimate manoeuvres to odd seeds")
+    cal.set_defaults(func=cmd_calibrate)
     return parser
 
 
