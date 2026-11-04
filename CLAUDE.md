@@ -211,7 +211,8 @@ WORKFLOW PROTOCOL (Claude Code)
    "VIVA NOTES" section with 10–15 likely examiner questions and 2–4
    sentence answers.
 7. Only commit to git when asked. Never commit anything in keys/, data/ or
-   .venv/.
+   .venv/. When asked to commit, commit straight to main; do not create a
+   separate branch.
 8. When the user pastes an error, fix the cause with the smallest change
    and do not alter unrelated files.
 
