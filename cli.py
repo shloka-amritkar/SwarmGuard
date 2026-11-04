@@ -5,6 +5,9 @@ Usage:
     python cli.py run --scenario single_hijack [--seed 3] [--plot] [--csv out.csv]
     python cli.py detect --scenario rigid_swarm_shift [--seed 5000]
     python cli.py calibrate [--seeds 200] [--scenario clean_baseline] [--target 0.01]
+    python cli.py sweep --param magnitude --scenario single_hijack --seeds 50 --workers 4
+    python cli.py evasion --scenario slow_drift [--seeds 40] [--max-delay 10] [--workers 4]
+    python cli.py propagation --scenario clean_baseline [--magnitude 6]
 
 All numbers printed are simulation results, not measurements of real drones.
 """
@@ -14,6 +17,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import matplotlib
@@ -23,13 +27,18 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402  (must come after matplotlib.use)
 import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
 
 from analysis.calibration import calibrate, load_calibration, save_calibration  # noqa: E402
+from analysis.evasion_search import stealth_envelope  # noqa: E402
+from analysis.experiments import builtin_values, run_pipeline, sweep  # noqa: E402
+from analysis.experiments import summarise as summarise_sweep  # noqa: E402
 from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
+from analysis.propagation import propagation_study  # noqa: E402
 from attacks.scenarios import Scenario, get_scenario, list_scenarios  # noqa: E402
 from config import DetectorConfig  # noqa: E402
 from core.schema import SimResult  # noqa: E402
-from detection import build_detectors  # noqa: E402
+from detection.fusion import describe_pattern, pattern_key  # noqa: E402
 from simulation.swarm import simulate  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -151,26 +160,116 @@ def _metrics_lines(m: RunMetrics, alarmed: set[int]) -> list[str]:
     ]
 
 
+def _pct(value: float) -> str:
+    """0.25 -> "25%"."""
+    return f"{value:.0%}"
+
+
+def _progress_printer() -> Callable[[float], None]:
+    """Progress callback that prints at most every 5 %.
+
+    WHY only every 5 %: printing after every run would flood the terminal.
+    """
+    shown = {"last": -1}
+
+    def show(fraction: float) -> None:
+        step = int(fraction * 20)
+        if step != shown["last"]:
+            shown["last"] = step
+            print(f"\r  progress {step * 5:3d} %", end="", flush=True)
+
+    return show
+
+
 def cmd_detect(args: argparse.Namespace) -> int:
-    """Run one scenario through detectors A, B and C and print their metrics."""
+    """Run one scenario through the pipeline: detectors, fusion and recovery."""
     scenario = get_scenario(args.scenario, seed=args.seed, centre_gain=args.centre_gain)
-    result = simulate(scenario.sim, scenario.attack)
     calibration = load_calibration(scenario.sim)
     det_cfg = calibration.thresholds if calibration else DetectorConfig()
     source = (f"calibrated ({calibration.created_utc})" if calibration
               else "analytical defaults (run `calibrate` to measure them)")
+    pipe = run_pipeline(scenario.sim, scenario.attack, det_cfg)
+    result = pipe.sim_result
     print(f"Scenario: {scenario.title} ({scenario.key}), seed {scenario.sim.seed}")
     print(f"Attacked drones (truth, evaluation view): {_fmt_drones(result.attacked_drones())}")
     print(f"Thresholds: {source}")
     print("Simulation result:")
-    for detector in build_detectors(det_cfg, scenario.sim):
-        run = detector.run(result.observed())
+    for run in pipe.all_runs():
         metrics = compute_metrics(result, run)
-        expected = scenario.expected.get(detector.short, "-")
-        print(f"  [{detector.short}] {detector.name}  (expected: {expected})")
-        onset = metrics.onset
-        for line in _metrics_lines(metrics, run.alarm_drones(after=onset)):
+        expected = scenario.expected.get(run.short, "-")
+        print(f"  [{run.short}] {run.name}  (expected: {expected})")
+        for line in _metrics_lines(metrics, run.alarm_drones(after=metrics.onset)):
             print(line)
+    key = pattern_key(pipe.runs)
+    print(f"  Pattern: {key} - {describe_pattern(key)}")
+    if pipe.recovery is not None:
+        rec = pipe.recovery.summary()
+        vec = rec["attack_vector"]
+        estimate = (f"({vec[0]:.2f}, {vec[1]:.2f}) m east/north, |D| = {rec['attack_magnitude']:.2f} m"
+                    if vec is not None else "not available")
+        print(f"  Recovery ({rec['method']}, {rec['status']}): estimated swarm-wide GPS offset "
+              f"{estimate}; outlier anchors: {_fmt_drones(set(rec['outlier_anchors']))}")
+    return 0
+
+
+def cmd_sweep(args: argparse.Namespace) -> int:
+    """Sweep one parameter over evaluation seeds and print detection rates."""
+    values = ([float(v) for v in args.values.split(",")] if args.values
+              else list(builtin_values(args.param, args.scenario)))
+    print(f"Sweeping {args.param} over {values} on {args.scenario}, "
+          f"{args.seeds} seeds each, {args.workers} worker(s)...")
+    df = sweep(args.param, values, args.scenario, args.seeds, workers=args.workers,
+               progress=_progress_printer())
+    print()
+    table = summarise_sweep(df)
+    print("Simulation result: detection rate per value and detector")
+    print(table.pivot(index="value", columns="detector", values="detection_rate")
+          .map(_pct).to_string())
+    print("False-alarm rate (honest drone flagged, or alarm before onset):")
+    print(table.pivot(index="value", columns="detector", values="false_alarm_rate")
+          .map(_pct).to_string())
+    if args.csv:
+        df.to_csv(args.csv, index=False)
+        print(f"Raw results saved to {args.csv}")
+    return 0
+
+
+def cmd_evasion(args: argparse.Namespace) -> int:
+    """Find each detector's 50 % and 90 % detection thresholds (stealth envelope)."""
+    limit = None if args.max_delay <= 0 else args.max_delay
+    print(f"Stealth envelope for {args.scenario}: {args.seeds} seeds per evaluation, "
+          f"detection must happen within {f'{limit:g} s' if limit else 'any time'}...")
+    df = stealth_envelope(args.scenario, n_seeds=args.seeds, max_delay_s=limit,
+                          workers=args.workers, progress=_progress_printer())
+    print()
+    print("Simulation result (smallest attack detected in at least the target share of runs):")
+    for _, row in df.iterrows():
+        value = ("not reliably detected in the search range" if pd.isna(row["threshold"])
+                 else f"{row['threshold']:.3f}")
+        print(f"  [{row['detector']}] {row['param']} for {row['target_rate']:.0%} detection: {value}")
+    return 0
+
+
+def cmd_propagation(args: argparse.Namespace) -> int:
+    """Measure how one spoofed drone displaces the others, at centre_gain 0 and 0.5."""
+    scenario = get_scenario(args.scenario)
+    print(f"Propagation study on {scenario.key}'s swarm (its attack settings are ignored): "
+          f"{args.magnitude} m spoof on each drone in turn, seed {args.seed}")
+    for res in propagation_study(scenario.sim, magnitude=args.magnitude, seed=args.seed):
+        off = res.matrix[~np.eye(len(res.matrix), dtype=bool)]
+        top = np.argsort(res.influence)[::-1][:3]
+        print(f"Simulation result, centre_gain = {res.centre_gain}:")
+        print(f"  displacement of other drones: mean {off.mean():.3f} m, max {off.max():.3f} m")
+        print(f"  spoofed drone dragged itself: mean {res.self_displacement.mean():.2f} m")
+        print("  most influential (PageRank): " + ", ".join(
+            f"{drone_label(int(i))} ({res.influence[i]:.3f})" for i in top))
+        print(f"  min separation: clean {res.min_separation_baseline:.2f} m, "
+              f"worst under attack {res.min_separation_attacked.min():.2f} m")
+        events = [(i, e) for i, evs in res.near_collisions.items() for e in evs]
+        print(f"  near-collision events (< 1 m): {len(events)}")
+        for i, e in events:
+            print(f"    spoofing {drone_label(i)}: {drone_label(e.i)} and {drone_label(e.j)} "
+                  f"at {e.t:.1f} s, {e.distance:.2f} m apart")
     return 0
 
 
@@ -183,15 +282,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
         print(f"Note: {scenario.key}'s attack ({scenario.attack.type}) is ignored; "
               "calibration flies its swarm configuration with no attack.")
 
-    shown = {"last": -1}
-
-    def show(fraction: float) -> None:
-        # WHY only every 5 %: printing after every run would flood the terminal.
-        step = int(fraction * 20)
-        if step != shown["last"]:
-            shown["last"] = step
-            print(f"\r  progress {step * 5:3d} %", end="", flush=True)
-
+    show = _progress_printer()
     print(f"Calibrating on {args.seeds} clean runs of {scenario.key} "
           f"(target false-alarm rate {args.target:.1%})...")
     result = calibrate(scenario.sim, n_seeds=args.seeds, include_manoeuvres=not args.no_manoeuvres,
@@ -238,6 +329,30 @@ def build_parser() -> argparse.ArgumentParser:
     cal.add_argument("--no-manoeuvres", action="store_true", dest="no_manoeuvres",
                      help="do not add legitimate manoeuvres to odd seeds")
     cal.set_defaults(func=cmd_calibrate)
+
+    sw = sub.add_parser("sweep", help="detection rates while one parameter changes")
+    sw.add_argument("--param", required=True,
+                    help="magnitude, drift_rate, n_targets, anchor_ratio, n_drones or gps_sigma")
+    sw.add_argument("--scenario", required=True, help="base scenario key")
+    sw.add_argument("--values", default=None, help="comma-separated values (default: built-in list)")
+    sw.add_argument("--seeds", type=int, default=50, help="evaluation seeds per value (from 5000)")
+    sw.add_argument("--workers", type=int, default=1, help="parallel processes")
+    sw.add_argument("--csv", default=None, help="save the raw per-seed results here")
+    sw.set_defaults(func=cmd_sweep)
+
+    ev = sub.add_parser("evasion", help="stealth envelope: smallest reliably detected attack")
+    ev.add_argument("--scenario", required=True, help="attack scenario key")
+    ev.add_argument("--seeds", type=int, default=40, help="seeds per evaluated value")
+    ev.add_argument("--max-delay", type=float, default=10.0, dest="max_delay",
+                    help="detections slower than this (s) do not count; 0 = no limit")
+    ev.add_argument("--workers", type=int, default=1, help="parallel processes")
+    ev.set_defaults(func=cmd_evasion)
+
+    pr = sub.add_parser("propagation", help="how one spoofed drone disturbs the swarm")
+    pr.add_argument("--scenario", default="clean_baseline", help="scenario whose swarm is used")
+    pr.add_argument("--magnitude", type=float, default=6.0, help="spoof size in metres")
+    pr.add_argument("--seed", type=int, default=5000, help="seed for both runs")
+    pr.set_defaults(func=cmd_propagation)
     return parser
 
 
