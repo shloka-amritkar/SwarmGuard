@@ -65,11 +65,29 @@ TECH STACK (do not add others without saying why)
   No networkx (implement PageRank yourself). No kaleido (use matplotlib for
   static figures in PDFs). No React or JavaScript frameworks.
 
-UI DIRECTION (full specification in docs/phases/phase-5.md)
-  "Mission control, not marketing page." A dark, calm, precise operations
-  console. One accent colour, Inter + JetBrains Mono fonts, custom cards
-  instead of default widgets, no emojis, no gradients, and a real dark map of
-  Pune as the centrepiece. All visual constants live in ui/theme.py.
+UI DIRECTION (full specification in docs/phases/phase-5.md, which wins on
+any conflict)
+  Neo-brutalist retro "poster" style: confident and handmade, never
+  generic. Warm cream page (#F4F1EA) with white cards, thick black outlines
+  (2.5px #111111), and hard offset shadows with no blur (5px 5px 0 on cards,
+  4px 4px 0 on buttons; buttons lift on hover and press into their shadow
+  on click). Deep red accent (#C8221B, hover #9E1A14) for hero bands and
+  the single primary action per screen; blush (#F4B6B2) for giant
+  background lettering and soft fills.
+  Fonts: Bricolage Grotesque 800 (titles and headings), DM Serif Display
+  (ONLY the giant background lettering on Home), Inter (UI text) and
+  JetBrains Mono (numbers, coordinates, hashes, IDs).
+  The Home page is the playful poster: textured red hero, SVG line-art
+  stickers (drones, radar, satellites, shields, padlocks, sparkles; no
+  faces), and a checkerboard band. Analysis pages use the same visual
+  language but calmer: no stickers in chart areas, generous white space,
+  charts readable first. The Pune map is light (carto-positron), with a
+  dark night map for the light-show scenario.
+  Banned: emojis, visible colour gradients, glows, glassmorphism, blurred
+  shadows, default Streamlit or Plotly looks, and colours outside the
+  palette. (The checkerboard uses CSS repeating-conic-gradient only to draw
+  hard-edged squares; that is allowed.) Status is always colour plus a text
+  label. All visual constants live in ui/theme.py.
 
 GLOBAL RULES (apply to every phase)
 R1 GROUND-TRUTH SEPARATION
