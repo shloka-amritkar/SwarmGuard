@@ -173,7 +173,7 @@ SwarmGuard/
                WHY "views" not "pages": Streamlit auto-builds navigation
                from a folder named pages/, which would conflict with our
                custom st.navigation menu.
-  assets/      style.css
+  assets/      style.css, stickers.py (inline SVG line-art stickers)
   .streamlit/  config.toml
   tests/
   docs/phases/ phase-1.md ... phase-6.md   (build instructions)
