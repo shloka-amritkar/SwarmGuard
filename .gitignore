@@ -1,0 +1,14 @@
+# Virtual environment (rebuilt with: py -3.11 -m venv .venv)
+.venv/
+
+# Generated data: database, calibration, evidence packages, models, plots
+data/
+
+# Signing keys must NEVER be committed
+keys/
+
+*.db
+*.zip
+__pycache__/
+*.pyc
+.pytest_cache/
