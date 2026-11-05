@@ -291,3 +291,83 @@ def test_cli_investigate_does_not_duplicate(tmp_path: Path) -> None:
     text = out.getvalue()
     assert "opened" in text and "already investigated" in text
     assert len(list((tmp_path / "packages").glob("*.zip"))) == 1
+
+
+# --------------------------------------------------------------------------
+# Step 2: view helpers and every view through the real app (AppTest)
+# --------------------------------------------------------------------------
+def test_view_helpers(shift_pipe: PipelineResult, clean_pipe: PipelineResult) -> None:
+    from ui.state import (affected_text, agreement_matrix, comparison_table, detection_results_table,
+                          expected_vs_actual, pattern_banner_text, verdict_strings)
+
+    assert verdict_strings(shift_pipe).shape == (shift_pipe.sim_result.n_steps, shift_pipe.sim_result.n_drones)
+    assert pattern_banner_text(shift_pipe)[0] == "Coordinated swarm shift suspected"
+    assert pattern_banner_text(clean_pipe) is None
+    exp = expected_vs_actual(get_scenario("rigid_swarm_shift").expected, shift_pipe)
+    assert set(exp["check"]) == {"as expected"}          # A blind, B and C alarm
+    assert list(detection_results_table(shift_pipe)["detector"].str[0]) == ["A", "B", "C", "F"]
+    matrix = agreement_matrix(shift_pipe)
+    assert set(matrix.columns) == {"drone", "A", "B", "C", "F"}
+    assert set(matrix["A"]) == {"silent"}                 # the blind spot, as text
+    assert len(comparison_table(shift_pipe)) == 3
+    assert affected_text("3,6") == "Drone 04, Drone 07" and affected_text("") == "-"
+
+
+def test_attack_vector_chart_validates() -> None:
+    times = np.arange(5.0)
+    fig = plots.attack_vector_chart(times, np.zeros((5, 2)))
+    assert fig.layout.template.layout.font.family is not None
+    with pytest.raises(ValueError):
+        plots.attack_vector_chart(times, np.zeros((4, 2)))
+
+
+VIEWS = ("home", "dashboard", "simulator", "attack_lab", "detection", "experiments", "recovery",
+         "incidents", "evidence", "methodology")
+NEEDS_DATA = {"dashboard", "detection", "recovery", "incidents", "evidence"}
+
+
+@pytest.fixture()
+def fresh_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """The real app.py on an empty temporary database, key folder and package folder."""
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setenv("SWARMGUARD_DB", str(tmp_path / "test.db"))
+    monkeypatch.setenv("SWARMGUARD_KEYS", str(tmp_path / "keys"))
+    monkeypatch.setenv("SWARMGUARD_PACKAGES", str(tmp_path / "packages"))
+    at = AppTest.from_file(str(Path(__file__).resolve().parent.parent / "app.py"), default_timeout=120)
+    at.run()
+    return at
+
+
+def test_every_view_loads_on_a_fresh_database(fresh_app) -> None:
+    for view in VIEWS:
+        fresh_app.switch_page(f"views/{view}.py").run()
+        assert not fresh_app.exception, f"{view}: {[e.value for e in fresh_app.exception]}"
+        has_empty = any(b.key == f"sg-empty-{view}" for b in fresh_app.button)
+        assert has_empty == (view in NEEDS_DATA), f"{view}: empty state shown = {has_empty}"
+
+
+def test_quick_start_then_every_view_and_evidence(fresh_app) -> None:
+    at = fresh_app
+    at.button(key="cta-quick").click().run()
+    assert not at.exception and at.session_state["incident_id"]
+    for view in VIEWS:
+        at.switch_page(f"views/{view}.py").run()
+        assert not at.exception, f"{view}: {[e.value for e in at.exception]}"
+    at.switch_page("views/evidence.py").run()
+    at.button(key="ev-build").click().run()
+    at.button(key="ev-verify-btn").click().run()
+    assert at.session_state["ev-verify"][at.session_state["ev-pick"]].overall == "PASS"
+    at.button(key="ev-tamper-btn").click().run()
+    result = at.session_state["ev-tamper"][at.session_state["ev-pick"]]
+    assert (result.before.overall, result.after.overall) == ("PASS", "FAIL")
+
+
+def test_attack_lab_invalid_settings_are_friendly(fresh_app) -> None:
+    at = fresh_app
+    at.switch_page("views/attack_lab.py").run()
+    at.selectbox(key="lab-preset").set_value("single_hijack").run()
+    at.selectbox(key="lab-single_hijack-type").set_value("multi_drone").run()
+    at.multiselect(key="lab-single_hijack-tn").set_value([]).run()
+    assert not at.exception
+    assert any("cannot be simulated" in e.value for e in at.error)

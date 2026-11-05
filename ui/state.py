@@ -37,15 +37,16 @@ import streamlit as st
 
 from analysis.calibration import load_or_default
 from analysis.experiments import PipelineResult, run_pipeline
+from analysis.metrics import compute_metrics
 from attacks.scenarios import Scenario, get_scenario
 from config import AttackConfig, DetectorConfig, SimConfig
 from core.schema import Verdict
-from core.utils import drone_label
+from core.utils import drone_label, format_drones
 from database.storage import DEFAULT_DB_PATH, Storage
 from detection.base import StepResult
-from detection.fusion import describe_pattern, pattern_key
+from detection.fusion import describe_pattern, detector_state, pattern_key
 from forensics.explainer import explain_drone
-from forensics.incident import open_incident, run_key, should_open_incident
+from forensics.incident import detector_summary, open_incident, run_key, should_open_incident
 from ui.theme import DETECTOR_NAMES
 
 logger = logging.getLogger(__name__)
@@ -300,3 +301,124 @@ def inspector_data(pipe: PipelineResult, drone: int, k: int) -> dict[str, Any]:
         "reasons": explain_drone(drone, steps, pipe.det_cfg),
         "action": RECOMMENDED_ACTION[verdict],
     }
+
+
+QUICK_START = "light_show_pune"   # the scenario behind every "Run quick start" button
+
+PATTERN_TITLES: dict[str, str] = {
+    "A_silent_B_C_alarm": "Coordinated swarm shift suspected",
+    "A_silent_B_alarm_C_no_evidence": "Swarm-wide shift suspected",
+    "A_C_silent_B_alarm": "Motion inconsistency only",
+    "C_silent_A_B_alarm": "Individual drone spoofing suspected",
+    "A_B_C_alarm": "All detectors disagree with GPS",
+}
+
+
+def verdict_strings(pipe: PipelineResult) -> np.ndarray:
+    """(T, N) fused verdict values as plain strings (what swarm_map colours by)."""
+    return np.vectorize(lambda v: v.value)(pipe.fusion.verdicts)
+
+
+def pattern_banner_text(pipe: PipelineResult) -> tuple[str, str] | None:
+    """(title, sentence) for the Dashboard's pattern banner; None when nothing alarmed."""
+    key = pattern_key(pipe.runs)
+    if key == "A_B_C_silent" or not any(r.flags().any() or r.swarm_flags().any() for r in pipe.runs):
+        return None
+    title = PATTERN_TITLES.get(key, "Detector agreement pattern " + key.replace("_", " "))
+    return title, describe_pattern(key)
+
+
+def detection_results_table(pipe: PipelineResult) -> pd.DataFrame:
+    """Per detector (A, B, C, fusion F): detected?, delay, identified drones, false alarms.
+
+    EVALUATION: compute_metrics compares alarms with the simulation's attack
+    labels (truth), so this table is labelled as evaluation in the UI.
+    """
+    rows = []
+    for run in pipe.all_runs():
+        m = compute_metrics(pipe.sim_result, run)
+        if m.is_attack_run:
+            detected = "yes" if m.detected else "no"
+        else:
+            detected = "n/a (no attack)"
+        rows.append({
+            "detector": f"{run.short} · {DETECTOR_NAMES.get(run.short, run.name)}",
+            "detected": detected,
+            "delay_s": m.detection_delay,
+            "identified": format_drones(sorted(run.alarm_drones())) if run.alarm_drones() else "-",
+            "false_alarms": (format_drones(sorted(m.false_alarm_drones)) if m.false_alarm_drones
+                             else ("alarm before onset" if m.early_alarms else "none")),
+        })
+    return pd.DataFrame(rows)
+
+
+EXPECTED_MEANING = {"detect": "should alarm", "blind": "cannot see it", "partial": "may alarm"}
+
+
+def expected_vs_actual(expected: dict[str, str], pipe: PipelineResult) -> pd.DataFrame:
+    """Compare a scenario's documented expectations with what each detector did.
+
+    detect -> matches if it alarmed; blind -> matches if it stayed silent;
+    partial -> always consistent (depends on anchors / persistence).
+    """
+    rows = []
+    for run in pipe.runs:
+        exp = expected.get(run.short)
+        if exp is None:
+            continue
+        state = detector_state(run)
+        if exp == "detect":
+            ok = state == "alarm"
+        elif exp == "blind":
+            ok = state != "alarm"
+        else:
+            ok = True
+        rows.append({"detector": f"{run.short} · {DETECTOR_NAMES.get(run.short, run.name)}",
+                     "expected": EXPECTED_MEANING.get(exp, exp), "actual": state.replace("_", " "),
+                     "check": "as expected" if ok else "differs"})
+    return pd.DataFrame(rows)
+
+
+def agreement_matrix(pipe: PipelineResult) -> pd.DataFrame:
+    """Drones x detectors over the whole run: "ALARM", "silent" or "no evidence" (plus fusion F).
+
+    A cell is ALARM if that detector ever alarmed on the drone, "no evidence"
+    if it never had a usable reading for it, else "silent". Text, not
+    colour, so the table reads the same in print and for colour-blind users.
+    """
+    n = pipe.sim_result.n_drones
+    table: dict[str, list[str]] = {"drone": [drone_label(i) for i in range(n)]}
+    for run in pipe.all_runs():
+        alarmed = run.alarm_drones()
+        scores = run.scores()
+        has_data = np.isfinite(scores).any(axis=0) if scores.ndim == 2 else np.ones(n, dtype=bool)
+        table[run.short] = ["ALARM" if i in alarmed else ("silent" if has_data[i] else "no evidence")
+                            for i in range(n)]
+    return pd.DataFrame(table)
+
+
+def comparison_table(pipe: PipelineResult) -> pd.DataFrame:
+    """One row per detector: state, first alarm, drones, peak score vs threshold (no truth used)."""
+    rows = []
+    for run in pipe.runs:
+        s = detector_summary(run, pipe.det_cfg)
+        rows.append({"detector": f"{run.short} · {s['name']}", "state": s["state"].replace("_", " "),
+                     "first_alarm_s": s["first_alarm_t"],
+                     "drones": format_drones(s["drones"]) if s["drones"] else "-",
+                     "peak": s["peak_score"], "score": s["score_name"], "threshold": s["threshold"]})
+    return pd.DataFrame(rows)
+
+
+def affected_text(raw: str | None) -> str:
+    """Storage's 0-based "3,6" -> "Drone 04, Drone 07" (the labels the UI uses everywhere)."""
+    if not raw:
+        return "-"
+    return format_drones(int(x) for x in str(raw).split(",") if x.strip())
+
+
+def incident_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Storage incident rows -> display rows (labels, not indices)."""
+    return [{"incident": r["id"], "scenario": r["scenario"], "pattern": r["pattern"],
+             "affected": affected_text(r["affected"]), "onset (s)": r["onset"],
+             "created (UTC)": r["created_utc"], "package": "built" if r["zip_path"] else "not built"}
+            for r in rows]

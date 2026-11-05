@@ -634,6 +634,27 @@ def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: 
     return fig
 
 
+def attack_vector_chart(times: np.ndarray, vectors: np.ndarray, onset: float | None = None) -> go.Figure:
+    """Estimated swarm-wide offset over time: east and north parts and its length.
+
+    vectors is (T, 2) from RecoveryRun.attack_vector_series(): mean of
+    (GPS - recovered position) over all drones; NaN where recovery failed.
+    """
+    if vectors.shape != (len(times), 2):
+        raise ValueError(f"vectors must have shape ({len(times)}, 2), got {vectors.shape}")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=times, y=np.linalg.norm(vectors, axis=1), name="size",
+                             line={"color": P.forest}))
+    fig.add_trace(go.Scatter(x=times, y=vectors[:, 0], name="east", line={"color": P.ink_2, "width": 1.5}))
+    fig.add_trace(go.Scatter(x=times, y=vectors[:, 1], name="north",
+                             line={"color": P.muted, "width": 1.5, "dash": "dot"}))
+    _onset(fig, onset)
+    fig.update_yaxes(title="metres")
+    fig.update_xaxes(title="time (s)")
+    fig.update_layout(template=LIGHT, height=300)
+    return fig
+
+
 # --------------------------------------------------------------------------
 # Architecture diagram (Graphviz DOT, palette colours)
 # --------------------------------------------------------------------------

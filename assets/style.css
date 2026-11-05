@@ -660,6 +660,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-ink);
 }
 
+/* Flat paper cards for dense content (equations, diagrams, tables): outline, no shadow. */
+[class*="st-key-sg-paper"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 18px 20px;
+}
+
 /* Console panels: dark green-black, used for map, feed and verification. */
 [class*="st-key-sg-console"],
 .sg-console {

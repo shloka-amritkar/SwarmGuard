@@ -34,7 +34,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from assets.stickers import drone_mark, sticker
-from ui.state import Event
+from analysis.experiments import PipelineResult
+from ui.state import QUICK_START, Event, get_or_run_pipeline, run_scenario
 from ui.theme import DETECTOR_NAMES, status_label, status_tone
 
 logger = logging.getLogger(__name__)
@@ -428,3 +429,28 @@ def danger_button(label: str, key: str) -> bool:
     """Destructive-style (red) button; used ONLY for the tamper test."""
     with st.container(key=f"sg-danger-{_slug(key)}"):
         return st.button(label, key=key)
+
+
+def require_run(page_key: str, message: str = "No simulation has run yet. Start with the quick start "
+                "scenario, or pick one on the Home page.") -> PipelineResult | None:
+    """The current run, or an empty state whose button runs the quick-start scenario.
+
+    WHY one helper: every analysis page needs a run; this keeps the empty
+    state (rule: never a blank page) identical everywhere.
+    """
+    pipe = get_or_run_pipeline()
+    if pipe is not None:
+        return pipe
+    if empty_state(message, "Run quick start", sticker_name="radar", key=page_key):
+        with st.spinner("Simulating, detecting, fusing and recovering..."):
+            run_scenario(QUICK_START)
+        st.rerun()
+    return None
+
+
+def paper_card(key: str):
+    """A flat outlined paper card (no shadow) to put widgets, charts or equations in.
+
+    Use as: with paper_card("equation"): st.latex(...)
+    """
+    return st.container(key=f"sg-paper-{_slug(key)}")
