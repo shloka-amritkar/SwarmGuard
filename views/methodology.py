@@ -50,6 +50,10 @@ EQUATIONS: tuple[tuple[str, str, str, str], ...] = (
     ("Multilateration", "recovery/multilateration.py",
      r"\hat{p}_i = \arg\min_p \sum_{j \in \mathcal{T}_i} \bigl(\lVert p - p_j \rVert - r_{ij}\bigr)^2",
      "Repairs one drone from trusted (never flagged) neighbours; needs at least three of them."),
+    ("Experimental ML detector (D)", "detection/detector_d_ml.py",
+     r"P_i = rac{1}{T}\sum_{t=1}^{T} p_t(	ext{attacked} \mid x_i), \qquad 	ext{raw flag}_i = P_i > 0.5",
+     "Average vote of T = 200 trees on 11 features built from A, B, C and GPS motion; trained on "
+     "simulated runs only, split by run (F6). Experimental, never part of fusion."),
     ("Wilson interval", "core/utils.py",
      r"\frac{\hat{p} + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat{p}(1-\hat{p})}{n} + \frac{z^2}{4n^2}}}{1 + \frac{z^2}{n}}",
      "A 95 % interval for a rate that stays sensible near 0 % and 100 % and for few runs."),
@@ -103,6 +107,8 @@ LIMITATIONS = (
     "The signing key is stored unencrypted on disk; production use would require a protected key "
     "(passphrase or hardware module).",
     "The platform never identifies an attacker.",
+    "Detector D (experimental ML) learns only from this simulator's attacks and noise, so its scores "
+    "say nothing about real drones; its inputs are A, B and C, so it is not an independent witness.",
     "Streamlit reruns the page on every interaction, so there are no animated page transitions.",
 )
 

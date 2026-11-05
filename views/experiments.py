@@ -9,6 +9,9 @@ The page says so before starting. WHY one process: a process pool inside
 Streamlit on Windows is fragile; the CLI (--workers) is the tool for large
 runs. Finished results are kept in session state, so switching tabs or
 pages does not lose them.
+
+The "Experimental ML detector" toggle adds a fifth tab with Detector D's
+held-out test metrics and feature importance (Phase 6).
 """
 
 from __future__ import annotations
@@ -196,11 +199,60 @@ def propagation_tab() -> None:
                   "PageRank ranks which drones spread disturbance the most.")
 
 
+# --------------------------------------------------------------------------
+# Experimental ML (Detector D)
+# --------------------------------------------------------------------------
+def _fmt(value: float) -> str:
+    """0.934 -> "0.93"; NaN (undefined) -> "-"."""
+    return "-" if value is None or pd.isna(value) else f"{value:.2f}"
+
+
+def ml_tab() -> None:
+    """Held-out metrics, confusion matrix and feature importance of the trained forest."""
+    c.section("Experimental ML detector", "A Random Forest trained on simulated runs, tested on runs it "
+              "never saw (split by run, fix F6). Experimental: it can only be as realistic as the "
+              "simulator.", eyebrow="Detector D")
+    trained = c.require_ml_model("experiments")
+    if trained is None:
+        return
+    info = trained.info
+    m = info["metrics"]
+    st.caption("Simulation result, held-out test runs")
+    c.kpi_row([c.KPI("Accuracy", _fmt(m["accuracy"])), c.KPI("Precision", _fmt(m["precision"])),
+               c.KPI("Recall", _fmt(m["recall"])), c.KPI("F1", _fmt(m["f1"])),
+               c.KPI("ROC-AUC", _fmt(m["roc_auc"]))])
+    left, right = st.columns([3, 2], gap="large")
+    with left:
+        c.section("Feature importance", "Which measurements the forest relies on most.")
+        c.chart(plots.feature_importance_bar(info["feature_importances"]), key="exp-ml-imp")
+    with right:
+        c.section("Confusion matrix", "Rows are the truth, columns the forest's answer (per drone-step).")
+        c.chart(plots.confusion_chart(info["confusion"]), key="exp-ml-cm")
+        recall = pd.DataFrame({"attack type": list(info["per_type_recall"]),
+                               "recall": list(info["per_type_recall"].values())})
+        st.dataframe(recall, hide_index=True, width="stretch", column_config={
+            "recall": st.column_config.ProgressColumn("Recall", format="percent", min_value=0, max_value=1)})
+        st.caption(f"Clean-row false-positive rate: {_fmt(info.get('clean_false_positive_rate'))}")
+    data = info.get("dataset", {})
+    st.caption(f"Trained {info.get('created_utc', '?')} on {data.get('n_runs', '?')} runs "
+               f"(seeds {data.get('seed_start', '?')}-{data.get('seed_end', '?')}): "
+               f"{len(info['train_groups'])} train runs, {len(info['test_groups'])} test runs, "
+               f"no run in both. sha256 {trained.sha256}")
+    c.explain_box("**Feature importance** is how much, on average, splits on a feature purify the "
+                  "trees' groups. A dominant 'cusum' says the forest mostly re-uses Detector B's evidence. "
+                  "**Recall per attack type** shows which attacks the forest learned to recognise. "
+                  "**Why split by run**: steps 0.1 s apart are near-copies, so a row-level split would "
+                  "test the forest on rows it has effectively already seen and overstate its accuracy.")
+
+
 def main() -> None:
     """Draw the page."""
     c.page_header("Experiments", eyebrow="Analysis",
                   caption="Statistics over many seeded runs. Every rate is a simulation result.")
-    tabs = st.tabs(["Calibration", "Sweeps", "Evasion", "Propagation"])
+    show_ml = st.toggle("Experimental ML detector", key="exp-ml",
+                        help="Adds a tab for Detector D, a Random Forest trained on simulated runs.")
+    names = ["Calibration", "Sweeps", "Evasion", "Propagation"] + (["Experimental ML"] if show_ml else [])
+    tabs = st.tabs(names)
     with tabs[0]:
         calibration_tab()
     with tabs[1]:
@@ -209,6 +261,9 @@ def main() -> None:
         evasion_tab()
     with tabs[3]:
         propagation_tab()
+    if show_ml:
+        with tabs[4]:
+            ml_tab()
 
 
 main()

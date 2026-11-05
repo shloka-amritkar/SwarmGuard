@@ -38,7 +38,15 @@ import streamlit as st
 
 from assets.stickers import drone_mark_img, sticker_img, svg_img
 from analysis.experiments import PipelineResult
-from ui.state import QUICK_START, Event, get_or_run_pipeline, run_scenario
+from ui.state import (
+    QUICK_MODEL_RUNS,
+    QUICK_START,
+    Event,
+    get_ml_model,
+    get_or_run_pipeline,
+    run_scenario,
+    train_quick_model,
+)
 from ui.theme import DETECTOR_NAMES, PALETTE, status_label, status_tone
 
 logger = logging.getLogger(__name__)
@@ -460,6 +468,31 @@ def require_run(page_key: str, message: str = "No simulation has run yet. Start 
     if empty_state(message, "Run quick start", sticker_name="radar", key=page_key):
         with st.spinner("Simulating, detecting, fusing and recovering..."):
             run_scenario(QUICK_START)
+        st.rerun()
+    return None
+
+
+def require_ml_model(page_key: str) -> Any:
+    """The trained experimental model, or an empty state with a "train quick model" button.
+
+    A fresh clone (or a Streamlit Cloud deployment) has no model, because
+    data/ is never committed. The button trains a small model in the app;
+    `python cli.py train-ml --runs 300` makes the full one.
+    """
+    try:
+        trained = get_ml_model()
+    except ValueError as exc:
+        st.error(f"The saved model was refused: {exc}")
+        return None
+    if trained is not None:
+        return trained
+    message = (f"No experimental model has been trained yet. Train a quick one here "
+               f"({QUICK_MODEL_RUNS} simulated runs, about a minute), or run "
+               "python cli.py train-ml --runs 300 for the full model.")
+    if empty_state(message, "Train quick model", sticker_name="constellation", key=f"ml-{page_key}"):
+        bar = st.progress(0.0, text="Simulating training runs...")
+        train_quick_model(progress=lambda f: bar.progress(min(max(float(f), 0.0), 1.0),
+                                                          text="Simulating training runs..."))
         st.rerun()
     return None
 

@@ -4,6 +4,8 @@ Left: per-drone detector time series, Detector A's residual heatmap at a
 chosen step, the fusion chart, the comparison and agreement tables.
 Right: the Drone Inspector for the chosen drone and step (the "decision
 inspector" pattern credited to ZYRNAV Resilience Lab, R6).
+Behind the "Experimental ML detector" toggle: Detector D (Phase 6), shown
+separately and never mixed into fusion.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from analysis.experiments import PipelineResult
 from core.utils import drone_label
 from ui import components as c
 from ui import plots
-from ui.state import agreement_matrix, comparison_table, inspector_data, step_index
+from ui.state import agreement_matrix, comparison_table, inspector_data, ml_run, step_index
 
 
 def pick_drone(pipe: PipelineResult) -> int:
@@ -75,6 +77,27 @@ def fusion_section(pipe: PipelineResult, drone: int, onset: float | None) -> Non
                   "shift. 'No evidence' means the detector had no usable data for that drone.")
 
 
+def ml_section(pipe: PipelineResult, drone: int, onset: float | None) -> None:
+    """Experimental Detector D: probability for the chosen drone and its alarms."""
+    c.section("Experimental ML detector", "A Random Forest trained only on this simulator. "
+              "Experimental; kept out of fusion. Simulation result.", eyebrow="Detector D")
+    trained = c.require_ml_model("detection")
+    if trained is None:
+        return
+    run = ml_run(pipe, trained)
+    c.html_block(c.detector_pill_html("D", "Experimental ML"))
+    c.chart(plots.ml_probability_chart(run, drone, onset, trained.info.get("threshold", 0.5)), key="det-ml-p")
+    c.chart(plots.alarm_timeline([*pipe.runs, run], onset, "simulation onset"), key="det-ml-tl")
+    st.caption(f"Model sha256 {trained.sha256[:16]}... trained on "
+               f"{trained.info.get('dataset', {}).get('n_runs', '?')} simulated runs. "
+               "Simulation result; not evidence about real drones.")
+    c.explain_box("**P(attacked)** is the share of the forest's trees that vote 'attacked' for this "
+                  "drone at this step. A raw flag needs P > 0.5; an alarm also needs the same m-of-n "
+                  "persistence as A, B and C. The model only knows the attacks our simulator can "
+                  "produce, so treat it as an experiment, not a fourth independent witness: its inputs "
+                  "ARE detectors A, B and C plus GPS motion features.")
+
+
 def main() -> None:
     """Draw the page."""
     c.page_header("Detection", "analysis", eyebrow="Analysis",
@@ -85,6 +108,8 @@ def main() -> None:
     onset = pipe.sim_result.attack_onset()
     left, right = st.columns([2, 1], gap="large")
     with right:
+        show_ml = st.toggle("Experimental ML detector", key="det-ml",
+                            help="Adds Detector D, a Random Forest trained on simulated runs.")
         drone = pick_drone(pipe)
         times = pipe.sim_result.times()
         t = st.slider("Inspect at time (s)", float(times[0]), float(times[-1]), float(times[-1]), 0.5,
@@ -94,6 +119,8 @@ def main() -> None:
         timeseries_section(pipe, drone, onset)
         heatmap_section(pipe)
         fusion_section(pipe, drone, onset)
+        if show_ml:
+            ml_section(pipe, drone, onset)
 
 
 main()

@@ -578,6 +578,55 @@ def pagerank_bar(influence: np.ndarray) -> go.Figure:
     return fig
 
 
+def feature_importance_bar(importances: dict[str, float]) -> go.Figure:
+    """Experimental Detector D: Random Forest feature importance, largest at the top.
+
+    Importance = the average drop in Gini impurity that splits on that
+    feature produce, over all trees (scikit-learn's feature_importances_).
+    """
+    items = sorted(importances.items(), key=lambda kv: kv[1])
+    fig = go.Figure(go.Bar(x=[v for _, v in items], y=[k for k, _ in items], orientation="h",
+                           marker={"color": P.det_d, "line": {"color": P.ink, "width": 1.5}},
+                           hovertemplate="%{y}: %{x:.3f}<extra></extra>"))
+    fig.update_xaxes(title="importance (mean impurity decrease)", rangemode="tozero")
+    fig.update_yaxes(showgrid=False, tickfont={"family": FONT_MONO, "size": 12})
+    fig.update_layout(template=LIGHT, height=40 + 30 * len(items), bargap=0.3)
+    return fig
+
+
+def confusion_chart(confusion: Sequence[Sequence[int]]) -> go.Figure:
+    """2 x 2 confusion matrix (rows = truth, columns = prediction) as an outlined grid."""
+    z = np.asarray(confusion, dtype=float)
+    labels = ["no attack", "attacked"]
+    fig = go.Figure(go.Heatmap(
+        z=z, x=[f"predicted {s}" for s in labels], y=[f"truly {s}" for s in labels],
+        colorscale=[[0.0, P.paper], [1.0, P.lavender_2]], showscale=False, xgap=2, ygap=2,
+        text=[[f"{int(v):,}" for v in row] for row in z], texttemplate="%{text}",
+        textfont={"family": FONT_MONO, "size": 15, "color": P.ink},
+        hovertemplate="%{y}, %{x}: %{z:,.0f} rows<extra></extra>"))
+    fig.update_yaxes(autorange="reversed", showgrid=False)
+    fig.update_xaxes(showgrid=False, side="top")
+    fig.update_layout(template=LIGHT, height=260)
+    return fig
+
+
+def ml_probability_chart(run: DetectionRun, drone: int, onset: float | None = None,
+                         threshold: float = 0.5) -> go.Figure:
+    """Experimental Detector D: P(attacked) for one drone over time, alarms marked."""
+    t, p = run.times(), run.scores()[:, drone]
+    flags = run.flags()[:, drone]
+    fig = go.Figure(go.Scatter(x=t, y=p, name="P(attacked)", line={"color": P.det_d}))
+    if flags.any():
+        fig.add_trace(go.Scatter(x=t[flags], y=p[flags], mode="markers", name="alarm (after persistence)",
+                                 marker={"color": P.status_alarm, "size": 5}))
+    _threshold(fig, threshold, f"threshold {threshold:g}")
+    _onset(fig, onset)
+    fig.update_yaxes(range=[0, 1.02], title="probability")
+    fig.update_xaxes(title="time (s)")
+    fig.update_layout(template=LIGHT, height=300)
+    return fig
+
+
 def min_separation_chart(times: np.ndarray, separation: np.ndarray, limit: float = 1.0) -> go.Figure:
     """Smallest true distance between any two drones over time, with the near-collision limit."""
     fig = go.Figure(go.Scatter(x=times, y=separation, name="min separation", line={"color": P.forest}))

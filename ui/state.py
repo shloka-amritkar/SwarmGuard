@@ -159,6 +159,61 @@ def maybe_open_incident(pipe: PipelineResult, scenario_key: str) -> str | None:
     return incident.incident_id
 
 
+# --------------------------------------------------------------------------
+# Experimental ML detector (Detector D, Phase 6)
+# --------------------------------------------------------------------------
+# WHY imported inside the functions: scikit-learn takes about a second to
+# import, and only the "Experimental ML detector" toggle needs it, so every
+# other page stays fast.
+QUICK_MODEL_RUNS = 40
+
+
+def models_dir() -> Path:
+    """Folder of the trained model (SWARMGUARD_MODELS overrides data/models)."""
+    return Path(os.environ.get("SWARMGUARD_MODELS", str(Path("data") / "models")))
+
+
+@st.cache_resource(show_spinner=False)
+def _load_ml(directory: str, stamp: float) -> Any:
+    """Load (and hash-check) the model. `stamp` = file mtime, so a retrained model is picked up."""
+    from detection.detector_d_ml import load_model
+
+    return load_model(Path(directory))
+
+
+def get_ml_model() -> Any:
+    """The trained TrainedModel, or None if no model has been trained yet.
+
+    Raises ValueError if the model file no longer matches its recorded SHA-256.
+    """
+    path = models_dir() / "rf.joblib"
+    stamp = path.stat().st_mtime if path.exists() else 0.0
+    return _load_ml(str(models_dir()), stamp)
+
+
+def ml_run(pipe: PipelineResult, trained: Any) -> Any:
+    """Detector D's DetectionRun on the current flight, cached per (run, model).
+
+    It sees only the observed frames (rule R1) and is kept OUT of fusion:
+    it is experimental and must not change any fused verdict.
+    """
+    from detection.detector_d_ml import run_ml
+
+    cache = st.session_state.setdefault("ml-runs", {})
+    key = (st.session_state.get("pipeline_key"), trained.sha256)
+    if key not in cache:
+        cache[key] = run_ml(pipe.sim_result.observed(), trained, pipe.det_cfg, pipe.sim_result.config)
+    return cache[key]
+
+
+def train_quick_model(n_runs: int = QUICK_MODEL_RUNS, progress: Any = None) -> Any:
+    """Train and save a small model from the app (the CLI train-ml makes the full 300-run one)."""
+    from detection.detector_d_ml import train_and_save
+
+    result, _ = train_and_save(n_runs, directory=models_dir(), progress=progress)
+    return result
+
+
 def current_scenario() -> Scenario | None:
     """The preset Scenario of the current run (None for custom runs or nothing run)."""
     key = st.session_state.get("scenario_key")

@@ -3,7 +3,8 @@
 Usage:
     python cli.py list-scenarios
     python cli.py run --scenario single_hijack [--seed 3] [--plot] [--csv out.csv]
-    python cli.py detect --scenario rigid_swarm_shift [--seed 5000]
+    python cli.py detect --scenario rigid_swarm_shift [--seed 5000] [--ml]
+    python cli.py train-ml [--runs 300]
     python cli.py calibrate [--seeds 200] [--scenario clean_baseline] [--target 0.01]
     python cli.py sweep --param magnitude --scenario single_hijack --seeds 50 --workers 4
     python cli.py evasion --scenario slow_drift [--seeds 40] [--max-delay 10] [--workers 4]
@@ -35,7 +36,7 @@ import pandas as pd  # noqa: E402
 
 from analysis.calibration import calibrate, load_calibration, load_or_default, save_calibration  # noqa: E402
 from analysis.evasion_search import stealth_envelope  # noqa: E402
-from analysis.experiments import builtin_values, run_pipeline, sweep  # noqa: E402
+from analysis.experiments import PipelineResult, builtin_values, run_pipeline, sweep  # noqa: E402
 from analysis.experiments import summarise as summarise_sweep  # noqa: E402
 from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
 from analysis.propagation import propagation_study  # noqa: E402
@@ -203,6 +204,8 @@ def cmd_detect(args: argparse.Namespace) -> int:
         print(f"  [{run.short}] {run.name}  (expected: {expected})")
         for line in _metrics_lines(metrics, run.alarm_drones(after=metrics.onset)):
             print(line)
+    if args.ml:
+        _print_ml_detection(pipe, scenario)
     key = pattern_key(pipe.runs)
     print(f"  Pattern: {key} - {describe_pattern(key)}")
     if pipe.recovery is not None:
@@ -212,6 +215,54 @@ def cmd_detect(args: argparse.Namespace) -> int:
                     if vec is not None else "not available")
         print(f"  Recovery ({rec['method']}, {rec['status']}): estimated swarm-wide GPS offset "
               f"{estimate}; outlier anchors: {_fmt_drones(set(rec['outlier_anchors']))}")
+    return 0
+
+
+def _print_ml_detection(pipe: PipelineResult, scenario: Scenario) -> None:
+    """Score the experimental Detector D on this run, if a model has been trained.
+
+    WHY imported here: scikit-learn is slow to import, and only this
+    option and train-ml need it.
+    """
+    from detection.detector_d_ml import load_model, run_ml
+
+    trained = load_model()
+    if trained is None:
+        print("  [D] Experimental ML: no model yet (run `python cli.py train-ml`)")
+        return
+    run = run_ml(pipe.sim_result.observed(), trained, pipe.det_cfg, scenario.sim)
+    metrics = compute_metrics(pipe.sim_result, run)
+    print(f"  [D] {run.name}  (EXPERIMENTAL, trained on simulated data only)")
+    for line in _metrics_lines(metrics, run.alarm_drones(after=metrics.onset)):
+        print(line)
+
+
+def cmd_train_ml(args: argparse.Namespace) -> int:
+    """Train the experimental Random Forest (Detector D) and save it with its SHA-256."""
+    from detection.detector_d_ml import TRAINING_SEED_START, train_and_save
+
+    seed_start = args.seed_start if args.seed_start is not None else TRAINING_SEED_START
+    print(f"Simulating {args.runs} training runs (seeds {seed_start}-{seed_start + args.runs - 1}) "
+          "and training the EXPERIMENTAL Random Forest...")
+    result, path = train_and_save(args.runs, seed_start=seed_start, directory=Path(args.out),
+                                  progress=_progress_printer())
+    print()
+    print(f"Split by run (F6): {len(result.train_groups)} train runs ({result.n_train} rows), "
+          f"{len(result.test_groups)} test runs ({result.n_test} rows)")
+    print("Simulation result, held-out test runs:")
+    for name, value in result.metrics.items():
+        print(f"  {name:<10} {_fmt_ratio(value)}")
+    (tn, fp), (fn, tp) = result.confusion
+    print(f"  confusion  TN {tn}  FP {fp}  FN {fn}  TP {tp}")
+    print(f"  clean-row false-positive rate: {_fmt_ratio(result.clean_false_positive_rate)}")
+    print("Recall per attack type:")
+    for name, value in result.per_type_recall.items():
+        print(f"  {name:<16} {_pct(value)}")
+    print("Feature importance:")
+    for name, value in sorted(result.feature_importances.items(), key=lambda kv: -kv[1]):
+        print(f"  {name:<20} {value:.3f}")
+    digest = (Path(args.out) / "rf.sha256").read_text(encoding="utf-8").split()[0]
+    print(f"Saved {path}  sha256 {digest}")
     return 0
 
 
@@ -400,7 +451,16 @@ def build_parser() -> argparse.ArgumentParser:
     detect.add_argument("--seed", type=int, default=None, help="override the scenario seed")
     detect.add_argument("--centre-gain", type=float, default=None, dest="centre_gain",
                         help="override closed-loop centre_gain")
+    detect.add_argument("--ml", action="store_true",
+                        help="also score the experimental ML detector D (needs train-ml first)")
     detect.set_defaults(func=cmd_detect)
+
+    ml = sub.add_parser("train-ml", help="train the experimental Random Forest detector D")
+    ml.add_argument("--runs", type=int, default=300, help="simulated training runs (default 300)")
+    ml.add_argument("--seed-start", type=int, default=None, dest="seed_start",
+                    help="first training seed (default 100000, far from calibration/evaluation seeds)")
+    ml.add_argument("--out", default=str(Path("data") / "models"), help="model output folder")
+    ml.set_defaults(func=cmd_train_ml)
 
     cal = sub.add_parser("calibrate", help="calibrate detector thresholds on clean runs")
     cal.add_argument("--seeds", type=int, default=200, help="number of clean runs (default 200)")
