@@ -12,6 +12,7 @@ Usage:
     python cli.py investigate --scenario rigid_swarm_shift [--seed 5000] [--force]
     python cli.py verify data/packages/SG-20261105-001.zip
     python cli.py tamper-test data/packages/SG-20261105-001 --file detections.csv [--byte 100]
+    python cli.py count-tests        (records the test count shown on the Home page)
 
 All numbers printed are simulation results, not measurements of real drones.
 """
@@ -424,6 +425,38 @@ def cmd_tamper_test(args: argparse.Namespace) -> int:
     return 0 if caught else 1
 
 
+TEST_COUNT_PATH = Path(__file__).resolve().parent / "assets" / "test_count.json"
+
+
+def count_collected(pytest_output: str) -> int:
+    """Number of tests in the output of `pytest --collect-only -q`.
+
+    pytest prints one "file::test" line per collected test (parametrised
+    cases count separately), then a summary such as "239 tests collected".
+    WHY count the "::" lines and not parse the summary: the summary wording
+    changes between pytest versions; the per-test lines do not.
+    """
+    count = sum(1 for line in pytest_output.splitlines() if "::" in line)
+    if count == 0:
+        raise ValueError("pytest collected no tests; is pytest installed in this environment?")
+    return count
+
+
+def cmd_count_tests(_args: argparse.Namespace) -> int:
+    """Run `pytest --collect-only -q` and write the count to assets/test_count.json."""
+    import json
+    import subprocess
+
+    proc = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q"],
+                          capture_output=True, text=True, cwd=Path(__file__).resolve().parent, check=False)
+    count = count_collected(proc.stdout)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    TEST_COUNT_PATH.write_text(json.dumps({"tests": count, "counted_utc": stamp}, indent=2) + "\n",
+                               encoding="utf-8")
+    print(f"{count} tests collected; written to {TEST_COUNT_PATH}")
+    return 0
+
+
 def _add_storage_args(parser: argparse.ArgumentParser) -> None:
     """--db and --keys options shared by the forensic commands."""
     parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite database path")
@@ -515,6 +548,8 @@ def build_parser() -> argparse.ArgumentParser:
     tam.add_argument("--byte", type=int, default=None, help="byte index to flip (default: random, seed 0)")
     _add_storage_args(tam)
     tam.set_defaults(func=cmd_tamper_test)
+    counter = sub.add_parser("count-tests", help="record the number of tests for the Home page")
+    counter.set_defaults(func=cmd_count_tests)
     return parser
 
 

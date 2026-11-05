@@ -39,6 +39,15 @@ def pick_incident(ids: list[str]) -> str:
     return st.selectbox("Incident", ids, key="ev-pick")
 
 
+def case_header(incident_id: str, row: dict[str, Any] | None) -> None:
+    """Case-file header: case number tab, filed time, scenario and the package's state."""
+    incident = get_storage().get_incident(incident_id)
+    pills = [c.status_pill_html("pass", "Package signed") if row else c.status_pill_html("none", "No package yet")]
+    detail = f"Scenario {incident['scenario_key']} · seed {incident['seed']} · simulation result"
+    c.html_block(c.case_card_html(incident_id, "Evidence file", c.utc_label(incident["created_utc"]), pills,
+                                  detail=detail, stamp=None))
+
+
 def ensure_package(incident_id: str) -> dict[str, Any] | None:
     """The package row, or a Build button when the package does not exist yet."""
     storage = get_storage()
@@ -83,7 +92,8 @@ def verify_section(incident_id: str, row: dict[str, Any]) -> None:
     report: VerificationReport | None = store.get(incident_id)
     if report is None:
         return
-    c.verification_table(report.checks, key="ev-verify")
+    c.verification_table(report.checks, key="ev-verify", overall=report.overall, case_id=incident_id,
+                         utc=c.utc_label(row.get("created_utc")))
     c.status_pill(report.overall.lower(), f"Overall {report.overall}")
 
 
@@ -119,10 +129,12 @@ def tamper_section(incident_id: str, row: dict[str, Any]) -> None:
     c.html_block(byte_context(folder, result))
     before, after = st.columns(2)
     with before:
-        c.verification_table(result.before.checks, key="ev-before")
+        c.verification_table(result.before.checks, key="ev-before", overall=result.before.overall,
+                             case_id=incident_id, utc="copy before tampering")
         c.status_pill(result.before.overall.lower(), f"Copy before: {result.before.overall}")
     with after:
-        c.verification_table(result.after.checks, key="ev-after")
+        c.verification_table(result.after.checks, key="ev-after", overall=result.after.overall,
+                             case_id=incident_id, utc="copy after one bit flipped")
         c.status_pill(result.after.overall.lower(), f"Copy after: {result.after.overall}")
     if result.before.overall == "PASS" and result.after.overall == "FAIL":
         st.success("Tamper detected: one flipped bit is enough to break the hash.")
@@ -132,8 +144,11 @@ def custody_and_key(incident_id: str) -> None:
     """Custody log of this incident, and the signing key's fingerprint and PEM."""
     c.section("Chain of custody", "Append-only log; each package links to the one before it.")
     rows = get_storage().list_custody(incident_id)
-    df = pd.DataFrame(rows, columns=["seq", "action", "created_utc", "manifest_sha256", "previous_sha256"])
-    st.dataframe(df, hide_index=True, width="stretch")
+    with c.paper_card("custody"):
+        c.html_block(c.custody_timeline_html(rows))
+    with st.expander("Full custody log (complete hashes)"):
+        df = pd.DataFrame(rows, columns=["seq", "action", "created_utc", "manifest_sha256", "previous_sha256"])
+        st.dataframe(df, hide_index=True, width="stretch")
     public = keys_dir() / PUBLIC_KEY
     if public.exists():
         key = load_public_key(public)
@@ -147,7 +162,7 @@ def custody_and_key(incident_id: str) -> None:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Evidence", "centre", eyebrow="Forensics",
+    c.page_header("Evidence", "centre", eyebrow="08 · Evidence centre",
                   caption="Signed, hash-chained evidence packages you can verify. Simulation results.")
     ids = [r["id"] for r in get_storage().list_incidents()]
     if not ids:
@@ -158,6 +173,7 @@ def main() -> None:
             st.rerun()
         return
     incident_id = pick_incident(ids)
+    case_header(incident_id, get_storage().get_package(incident_id))
     row = ensure_package(incident_id)
     if row is None:
         return

@@ -100,7 +100,7 @@ def ml_section(pipe: PipelineResult, drone: int, onset: float | None) -> None:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Detection", "analysis", eyebrow="Analysis",
+    c.page_header("How each detector", "saw it", eyebrow="04 · Detection analysis",
                   caption="Why each detector did or did not alarm. Simulation result.")
     pipe = c.require_run("detection")
     if pipe is None:

@@ -67,7 +67,7 @@ on the same flight makes the blind spot visible:
    database/   SQLite storage + chain of custody
    reports/    PDF report (matplotlib figures, reportlab)
                     |
-   app.py + views/ + ui/   Streamlit "Ivory + Console" web app      cli.py   command line
+   app.py + views/ + ui/   Streamlit "Ground Truth" web app       cli.py   command line
 ```
 
 `core/schema.py` defines the data contract. Detectors, fusion and recovery accept only an
@@ -112,7 +112,9 @@ example run.
 ```
 
 There is one test file per module (`tests/test_schema.py`, `test_detector_a.py`, ... `test_ml.py`),
-plus the per-phase suites `tests/test_phase1.py` ... `test_phase5.py`.
+plus the per-phase suites `tests/test_phase1.py` ... `test_phase5.py` and `test_phase7.py` (maps,
+design motifs and a sweep for retired design elements). After adding tests, run
+`.venv\Scripts\python cli.py count-tests` so the Home page shows the new count.
 
 ---
 
@@ -278,6 +280,16 @@ Each fix has a test (`tests/test_sensors.py`, `test_detector_c.py`, `test_recove
 | UAV Intelligence Fusion System | Arzoo Tiwary | Dempster-Shafer fusion, template reports, modular pipeline |
 | ZYRNAV Resilience Lab | Chris Matheus Rozario | scenario presets, decision inspector UI pattern |
 
+**Interface design.** The app uses SwarmGuard's own original "Ground Truth" design system: survey
+maps (sand paper, olive contours, coordinate rulers), forensic case files (case numbers, folder
+tabs, rubber stamps, hash ribbons) and amber instrument displays (the radar scope). It has a
+general influence from neo-brutalist web design (outlined shapes, hard shadows); no other
+product's look, imagery or assets are used.
+
+**Fonts.** Fraunces, IBM Plex Sans and IBM Plex Mono, all under the SIL Open Font License
+(licence texts in `assets/fonts/`). The TTF files there are used by the PDF report; the web app
+loads the same fonts from Google Fonts.
+
 ---
 
 ## Limitations
@@ -348,9 +360,21 @@ Data locations can be redirected with environment variables: `SWARMGUARD_DB`, `S
 
 | | |
 |---|---|
-| ![Home](docs/screenshots/01_home.png) | ![Dashboard](docs/screenshots/02_dashboard.png) |
+| ![Home hero with the motion-check alarm](docs/screenshots/13_hero_alarm.png) | ![Dashboard](docs/screenshots/02_dashboard.png) |
+| ![Evidence verified](docs/screenshots/14_evidence_verified.png) | ![Whole-flight camera](docs/screenshots/16_map_whole_flight.png) |
+| ![Home](docs/screenshots/01_home.png) | ![Simulator](docs/screenshots/03_simulator.png) |
 | ![Detection](docs/screenshots/05_detection.png) | ![Experiments](docs/screenshots/06_experiments.png) |
 | ![Detector D in Detection](docs/screenshots/11_detection_ml.png) | ![Detector D in Experiments](docs/screenshots/12_experiments_ml.png) |
-| ![Evidence](docs/screenshots/09_evidence.png) | ![Methodology](docs/screenshots/10_methodology.png) |
+| ![Incidents](docs/screenshots/08_incidents.png) | ![Evidence](docs/screenshots/09_evidence.png) |
+| ![Methodology](docs/screenshots/10_methodology.png) | ![Phone width](docs/screenshots/15_mobile_home.png) |
+
+### Using the maps
+
+Drag to pan, scroll to zoom, and use "Reset view" in the map's toolbar to return. The
+**Camera** control above each map switches between **Follow swarm** (the view stays centred on the
+swarm's GPS-reported centre) and **Whole flight** (one fixed view showing every position of the
+run). On the Swarm Simulator, switching camera restarts the playback at t = 0, because Plotly plays
+the animation inside the browser and Streamlit never learns which frame was showing; on the
+Dashboard the time slider keeps its value.
 
 Beginner-level explanations of every file, with likely viva questions, are in `docs/notes/`.

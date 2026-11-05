@@ -275,6 +275,19 @@ class Storage:
                 (incident_id, str(path), str(zip_path), manifest_sha256, utc_now()),
             )
 
+    def list_packages(self, limit: int = 8) -> list[dict[str, Any]]:
+        """The newest evidence packages: [{incident_id, manifest_sha256, created_utc}, ...].
+
+        Newest first, at most `limit` rows. Used by the app's hash ribbon
+        (Phase 7, motif M5) to show REAL manifest hashes, never made-up ones.
+        """
+        if limit < 1:
+            raise ValueError(f"limit must be >= 1, got {limit}")
+        with self._connect() as conn:
+            rows = conn.execute("SELECT incident_id, manifest_sha256, created_utc FROM evidence_packages "
+                                "ORDER BY created_utc DESC, incident_id DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
     def get_package(self, incident_id: str) -> dict[str, Any] | None:
         """The evidence_packages row of an incident, or None."""
         with self._connect() as conn:

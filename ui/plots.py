@@ -1,25 +1,28 @@
-"""Plotly figures and templates for the app (docs/phases/phase-5.md section 5.10).
+"""Plotly figures and templates for the app (docs/phases/phase-7.md section B10).
 
 TWO TEMPLATES
-    swarmguard_light    charts on paper cards: transparent background, Inter,
-                        1px ink axes, light dashed gridlines, muted ticks,
-                        2.25px lines, horizontal legend above, no titles.
-    swarmguard_console  charts inside dark console panels: console
-                        background, console_ln gridlines, console_tx labels,
-                        mint as the neutral trace.
+    groundtruth_light   charts on cards: transparent background, IBM Plex
+                        Sans, 1px espresso axes, faint dashed gridlines in
+                        "rule", stone ticks, 2.25px lines, horizontal legend
+                        above, no titles, 300 ms transitions.
+    groundtruth_panel   charts inside charcoal instrument panels: charcoal
+                        background, char_line gridlines, char_text labels,
+                        amber as the neutral trace.
 Every colour comes from core/palette.py. Detectors always use their fixed
-colours (A blue, B teal, C ochre); red is used only for alarms.
+colours (A steel, B teal, C ochre, D terracotta); brick red only for alarms.
 
 THE SWARM MAP
-Always the dark "carto-darkmatter" basemap over Pune, inside a console
+Always the dark "carto-darkmatter" basemap over Pune, inside an instrument
 panel. Positions are converted from metres with enu_to_latlon (rule R3,
 display only). Animated maps use one frame every 5 steps.
 WHY every 5 steps: 600 frames x 20 drones makes the browser lag; 120
 frames at 0.5 s spacing still look smooth.
+Dragging pans the map (dragmode "pan") and the wheel zooms. The camera
+either follows the swarm's GPS centroid or shows the whole flight.
 Map markers cannot have outlines or custom shapes, so outlines are drawn as
-a slightly larger marker underneath, and anchored drones get a mint ring.
-The "offline" grid version (no internet tiles) can use real outlines,
-diamonds for anchored drones and dashed truth lines.
+a slightly larger marker underneath, and anchored drones get an amber
+diamond drawn as a small line. The "offline" grid version (no internet
+tiles) can use real outlines, diamond markers and dashed truth lines.
 
 EVALUATION VIEW (rule R1): true positions are shown only when the caller
 asks for it, labelled "Evaluation view: ground truth".
@@ -49,8 +52,9 @@ from ui.theme import DETECTOR_NAMES, FONT_MONO, FONT_SANS, PALETTE, rgba
 logger = logging.getLogger(__name__)
 
 P = PALETTE
-LIGHT = "swarmguard_light"
-CONSOLE = "swarmguard_console"
+LIGHT = "groundtruth_light"
+PANEL = "groundtruth_panel"
+CONSOLE = PANEL     # WHY kept: older code and tests may still say CONSOLE
 LINE_W = 2.25
 MAP_STYLE = "carto-darkmatter"
 FRAME_EVERY = 5
@@ -91,7 +95,7 @@ def _template(bg: str, text: str, line: str, grid: str, tick: str, neutral: str,
 def register_templates() -> None:
     """Register both templates with Plotly (safe to call many times)."""
     pio.templates[LIGHT] = _template(TRANSPARENT, P.espresso, P.espresso, P.rule, P.stone_text, P.olive, True)
-    pio.templates[CONSOLE] = _template(P.charcoal, P.char_text, P.char_line, P.char_line,
+    pio.templates[PANEL] = _template(P.charcoal, P.char_text, P.char_line, P.char_line,
                                        P.char_mute, P.amber, False)
 
 
@@ -99,7 +103,7 @@ register_templates()
 
 
 def _threshold(fig: go.Figure, y: float, label: str, row: int | None = None, col: int | None = None) -> None:
-    """Dashed ink threshold line with a right-aligned label."""
+    """Dashed espresso threshold line with a right-aligned label."""
     kwargs: dict[str, Any] = {"row": row, "col": col} if row is not None else {}
     fig.add_hline(y=y, line={"color": P.espresso, "dash": "dash", "width": 1},
                   annotation_text=label, annotation_position="top right",
@@ -115,6 +119,17 @@ def _onset(fig: go.Figure, onset: float | None, label: str = "simulation onset")
                   annotation_font={"size": 11, "color": P.stone_text})
 
 
+def _heat_scale(brass_at: float) -> list[list[Any]]:
+    """Heatmap colour scale card -> vellum -> brass -> brick (B10).
+
+    brass_at is where (0..1) the scale reaches brass; vellum sits halfway
+    before it. WHY no rainbow: one warm ramp reads as "more" without
+    suggesting categories that do not exist.
+    """
+    b = float(np.clip(brass_at, 0.02, 0.99))
+    return [[0.0, P.card], [b / 2.0, P.vellum], [b, P.brass], [1.0, P.status_alarm]]
+
+
 def status_colour(verdict: str) -> str:
     """Fill colour for a fused verdict / status string."""
     return P.status_colour(verdict)
@@ -123,19 +138,93 @@ def status_colour(verdict: str) -> str:
 # --------------------------------------------------------------------------
 # Swarm map
 # --------------------------------------------------------------------------
-def _zoom_for(extent_m: float, lat: float, pixels: float = 440.0) -> float:
-    """Map zoom so that extent_m (plus a 30 % margin) fits in `pixels` screen pixels.
+def _zoom_for(extent_m: float, lat: float, pixels: float = 440.0, fill: float = 1 / 1.3,
+              min_extent: float = 30.0) -> float:
+    """Map zoom so that a distance of extent_m covers `fill` of `pixels` screen pixels.
 
         metres per pixel at zoom z = 78271.52 * cos(lat) / 2^z
+        we want   extent_m = fill * pixels * mpp
+        so        z = log2(78271.52 * cos(lat) * fill * pixels / extent_m)
 
     WHY 78271.52 (not the familiar 156543.03): Plotly's map uses MapLibre,
     whose tiles are 512 px wide, so zoom 0 shows the equator at half the
     metres per pixel of the classic 256 px tiles.
+    The default fill 1/1.3 leaves a 30 % margin. Zoom is clipped to 10..21:
+    Carto tiles stop at about zoom 20; MapLibre enlarges them beyond that.
     """
     if pixels <= 0:
         raise ValueError(f"pixels must be > 0, got {pixels}")
-    mpp = max(extent_m, 30.0) * 1.3 / pixels
-    return float(np.clip(math.log2(78271.52 * math.cos(math.radians(lat)) / mpp), 10.0, 20.0))
+    if not 0.0 < fill <= 1.0:
+        raise ValueError(f"fill must be in (0, 1], got {fill}")
+    mpp = max(extent_m, min_extent) / (fill * pixels)
+    return float(np.clip(math.log2(78271.52 * math.cos(math.radians(lat)) / mpp), 10.0, 21.0))
+
+
+def metres_per_pixel(zoom: float, lat: float = LAT0) -> float:
+    """Inverse of _zoom_for: ground metres covered by one screen pixel at this zoom."""
+    return 78271.52 * math.cos(math.radians(lat)) / 2.0 ** zoom
+
+
+def camera_whole(points: np.ndarray, pixels: float, padding: float = 0.15) -> tuple[np.ndarray, float]:
+    """"Whole flight" camera: (centre in metres, zoom) showing every point of the run.
+
+        centre = middle of the bounding box  (min + max) / 2
+        extent = longest side of the bounding box
+        zoom   chosen so extent * (1 + padding) fits in `pixels`
+
+    WHY the bounding-box middle (not the mean): the camera must show the
+    whole flight, and a mean is pulled towards where the swarm lingered.
+    """
+    pts = np.asarray(points, dtype=float).reshape(-1, 2)
+    centre = (pts.min(axis=0) + pts.max(axis=0)) / 2.0
+    extent = float(np.ptp(pts, axis=0).max())
+    return centre, _zoom_for(extent, LAT0, pixels=pixels, fill=1.0 / (1.0 + padding))
+
+
+def camera_follow(gps: np.ndarray, pixels: float, fill: float) -> tuple[np.ndarray, float]:
+    """"Follow swarm" camera: (per-step centres (T, 2) in metres, one fixed zoom).
+
+    gps  (T, N, 2) GPS-REPORTED positions (never the truth: the camera shows
+         what the operator would see, rule R1).
+    centre_k = mean_i gps[k, i]                  (swarm centroid at step k)
+    r_k      = max_i |gps[k, i] - centre_k|      (radius of the swarm at step k)
+    Two zooms are computed and the smaller (wider view) is used:
+      * comfort: the typical diameter 2 * median(r_k) fills `fill` of the view
+        (about half for a 10-drone swarm, two thirds for the light show);
+      * safety:  the largest radius ever, 2 * max(r_k), still fits with a
+        15 % margin, so no drone ever leaves the view, even a spoofed one
+        that the GPS reports 10 m away.
+    WHY one fixed zoom: a zoom that changed every frame would make the map
+    "breathe" and distract from the drones' own motion.
+    """
+    gps = np.asarray(gps, dtype=float)
+    centres = gps.mean(axis=1)
+    radius = np.linalg.norm(gps - centres[:, None, :], axis=-1).max(axis=1)
+    comfort = _zoom_for(2.0 * float(np.median(radius)), LAT0, pixels=pixels, fill=fill, min_extent=4.0)
+    safety = _zoom_for(2.0 * float(radius.max()), LAT0, pixels=pixels, fill=1.0 / 1.15, min_extent=4.0)
+    return centres, min(comfort, safety)
+
+
+def _ring_points(centre: np.ndarray, radius: float, n: int = 48) -> tuple[list[float | None], list[float | None]]:
+    """A closed circle of `radius` metres around centre, as a polyline ending in None."""
+    angles = np.linspace(0.0, 2.0 * math.pi, n + 1)
+    xs: list[float | None] = list(centre[0] + radius * np.cos(angles))
+    ys: list[float | None] = list(centre[1] + radius * np.sin(angles))
+    return xs + [None], ys + [None]
+
+
+def _diamond_points(pos: np.ndarray, half: float) -> tuple[list[float | None], list[float | None]]:
+    """Diamond outlines (half-diagonal `half` metres) around each position, None-separated.
+
+    WHY drawn as lines: map markers cannot be diamonds, so the survey symbol
+    for an anchored drone is drawn as a small closed polyline.
+    """
+    xs: list[float | None] = []
+    ys: list[float | None] = []
+    for x, y in pos:
+        xs += [x, x + half, x, x - half, x, None]
+        ys += [y + half, y, y - half, y, y + half, None]
+    return xs, ys
 
 
 def _nearest_links(pos: np.ndarray, k: int = 2) -> tuple[list[float | None], list[float | None]]:
@@ -159,11 +248,16 @@ def _nearest_links(pos: np.ndarray, k: int = 2) -> tuple[list[float | None], lis
     return xs, ys
 
 
+RING_RADII_M = (10.0, 20.0)    # faint range rings around the swarm centroid
+
+
 def _frame_layers(result: SimResult, statuses: np.ndarray, k: int, links: bool, evaluation: bool,
-                  light_show: bool, trail: int) -> list[dict[str, Any]]:
+                  light_show: bool, trail: int, diamond_m: float = 1.2) -> list[dict[str, Any]]:
     """Plain-data layers for step k: dicts with x, y (metres), colour, size, kind.
 
     The same layers feed the map (lat/lon) and the offline grid figure.
+    diamond_m is the half-diagonal of the anchor diamond in metres (chosen
+    by the caller from the zoom so the diamond is about 9 px on screen).
     """
     frame = result.frames[k]
     gps = frame.observed.gps_pos
@@ -171,6 +265,13 @@ def _frame_layers(result: SimResult, statuses: np.ndarray, k: int, links: bool, 
     colours = [status_colour(s) for s in statuses[k]]
     labels = [f"{drone_label(i)} · {str(statuses[k][i]).replace('_', ' ').upper()}" for i in range(n)]
     layers: list[dict[str, Any]] = []
+    rx: list[float | None] = []
+    ry: list[float | None] = []
+    for radius in RING_RADII_M:
+        xs, ys = _ring_points(gps.mean(axis=0), radius)
+        rx += xs
+        ry += ys
+    layers.append({"kind": "rings", "x": rx, "y": ry})
     lx, ly = _nearest_links(gps) if links else ([], [])
     layers.append({"kind": "links", "x": lx, "y": ly})
     lo = max(0, k - trail)
@@ -192,7 +293,8 @@ def _frame_layers(result: SimResult, statuses: np.ndarray, k: int, links: bool, 
         layers.append({"kind": "truth", "x": truth[:, 0], "y": truth[:, 1],
                        "text": [f"{drone_label(i)} · true position (evaluation)" for i in range(n)]})
     anchored = np.flatnonzero(frame.anchored)
-    layers.append({"kind": "anchors", "x": gps[anchored, 0], "y": gps[anchored, 1]})
+    ax_, ay_ = _diamond_points(gps[anchored], diamond_m)
+    layers.append({"kind": "anchors", "x": ax_, "y": ay_})
     layers.append({"kind": "drones", "x": gps[:, 0], "y": gps[:, 1], "colour": colours, "text": labels,
                    "anchored": frame.anchored})
     return layers
@@ -216,8 +318,11 @@ def _map_traces(layers: list[dict[str, Any]]) -> list[go.Scattermap]:
     for layer in layers:
         lat, lon = ll(list(layer["x"]), list(layer["y"]))
         kind = layer["kind"]
-        if kind in ("links", "truth_links"):
-            colour = rgba(P.amber, 0.2) if kind == "links" else rgba(P.char_text, 0.45)
+        if kind == "rings":
+            traces.append(go.Scattermap(lat=lat, lon=lon, mode="lines", line={"color": P.char_line, "width": 1},
+                                        hoverinfo="skip", name="range rings"))
+        elif kind in ("links", "truth_links"):
+            colour = rgba(P.amber, 0.15) if kind == "links" else rgba(P.char_text, 0.45)
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="lines", line={"color": colour, "width": 1},
                                         hoverinfo="skip", name=kind))
         elif kind == "trails":
@@ -233,13 +338,13 @@ def _map_traces(layers: list[dict[str, Any]]) -> list[go.Scattermap]:
                                         hovertemplate="%{text}<extra></extra>",
                                         marker={"size": 9, "color": P.charcoal}))
         elif kind == "anchors":
-            traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="anchor ring",
-                                        marker={"size": 21, "color": P.amber}))
-            traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="anchor gap",
-                                        marker={"size": 17, "color": P.charcoal}))
+            traces.append(go.Scattermap(lat=lat, lon=lon, mode="lines", hoverinfo="skip", name="anchor diamond",
+                                        line={"color": P.amber, "width": 1.5}))
         elif kind == "drones":
+            # WHY two markers: map markers have no outline, so a 1 px card-colour
+            # ring is a marker 2 px larger drawn underneath.
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="outline",
-                                        marker={"size": 13, "color": P.sand}))
+                                        marker={"size": 13, "color": P.card}))
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", name="drones", text=layer["text"],
                                         hovertemplate="%{text}<extra></extra>",
                                         marker={"size": 11, "color": layer["colour"]}))
@@ -251,9 +356,12 @@ def _grid_traces(layers: list[dict[str, Any]]) -> list[go.Scatter]:
     traces: list[go.Scatter] = []
     for layer in layers:
         kind, x, y = layer["kind"], list(layer["x"]), list(layer["y"])
-        if kind in ("links", "truth_links"):
+        if kind == "rings":
+            traces.append(go.Scatter(x=x, y=y, mode="lines", hoverinfo="skip", name="range rings",
+                                     line={"color": P.char_line, "width": 1}))
+        elif kind in ("links", "truth_links"):
             traces.append(go.Scatter(x=x, y=y, mode="lines", hoverinfo="skip", name=kind,
-                                     line={"color": rgba(P.amber, 0.2) if kind == "links" else rgba(P.char_text, 0.5),
+                                     line={"color": rgba(P.amber, 0.15) if kind == "links" else rgba(P.char_text, 0.5),
                                            "width": 1, "dash": "solid" if kind == "links" else "dash"}))
         elif kind == "trails":
             traces.append(go.Scatter(x=x, y=y, mode="markers", hoverinfo="skip", name=kind,
@@ -271,12 +379,12 @@ def _grid_traces(layers: list[dict[str, Any]]) -> list[go.Scatter]:
             traces.append(go.Scatter(x=x, y=y, mode="markers", name="drones", text=layer["text"],
                                      hovertemplate="%{text}<extra></extra>",
                                      marker={"size": 13, "color": layer["colour"], "symbol": symbols,
-                                             "line": {"color": P.sand, "width": 1}}))
+                                             "line": {"color": P.card, "width": 1}}))
     return traces
 
 
 def _animation_controls(labels: list[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Play/pause buttons and a styled time slider for the console panel."""
+    """Play/pause buttons and a styled time slider for the instrument panel."""
     frame_args = {"frame": {"duration": 160, "redraw": True}, "mode": "immediate",
                   "transition": {"duration": 0}, "fromcurrent": True}
     buttons = [{
@@ -310,52 +418,91 @@ def swarm_map(
     light_show: bool = False,
     height: int = 520,
     trail: int = TRAIL_STEPS,
+    camera: str | None = None,
 ) -> go.Figure:
-    """Swarm map in console style.
+    """Swarm map in instrument-panel style.
 
     statuses  (T, N) status/verdict strings that colour the drones
     step      draw only this step (no animation); None = animate every `every` steps
     evaluation  also draw true positions (EVALUATION VIEW, rule R1)
     offline   plain metric grid instead of map tiles
     light_show larger low-opacity layer under each drone (night lights)
+    camera    "follow" (centre on the swarm's GPS centroid every frame, at a
+              fixed close zoom) or "whole" (one camera showing the entire
+              flight). None = "follow" when animated, "whole" for a single
+              step (docs/phases/phase-7.md A2, A3).
+    Dragging pans the map (dragmode "pan"); the mouse wheel zooms when the
+    figure is shown with MAP_PLOTLY_CONFIG (ui/components.chart does this).
     """
     if statuses.shape != (result.n_steps, result.n_drones):
         raise ValueError(f"statuses must have shape {(result.n_steps, result.n_drones)}, got {statuses.shape}")
     if every < 1:
         raise ValueError(f"every must be >= 1, got {every}")
-    make = _grid_traces if offline else _map_traces
+    camera = camera or ("whole" if step is not None else "follow")
+    if camera not in CAMERA_MODES:
+        raise ValueError(f"camera must be one of {CAMERA_MODES}, got {camera!r}")
     steps = [step] if step is not None else list(range(0, result.n_steps, every))
     if step is None and steps[-1] != result.n_steps - 1:
         steps.append(result.n_steps - 1)
-    first = make(_frame_layers(result, statuses, steps[0], links, evaluation, light_show, trail))
-    fig = go.Figure(data=first)
-    times = result.times()
+    centres, zoom = _camera(result, camera, evaluation, light_show, height)
+    # WHY 9 px: the anchor diamond should look the same size at any zoom.
+    diamond_m = 9.0 * metres_per_pixel(zoom)
+    make = _grid_traces if offline else _map_traces
+
+    def layers(k: int) -> list[Any]:
+        return make(_frame_layers(result, statuses, k, links, evaluation, light_show, trail, diamond_m))
+
+    def centre_of(k: int) -> dict[str, float]:
+        lat, lon = enu_to_latlon(float(centres[k, 0]), float(centres[k, 1]))
+        return {"lat": float(lat), "lon": float(lon)}
+
+    fig = go.Figure(data=layers(steps[0]))
     if len(steps) > 1:
-        labels = [f"{times[k]:.1f}" for k in steps]
-        fig.frames = [go.Frame(name=lab, data=make(_frame_layers(result, statuses, k, links, evaluation,
-                                                                  light_show, trail)))
+        labels = [f"{result.times()[k]:.1f}" for k in steps]
+        follow = camera == "follow" and not offline
+        # WHY layout inside each frame (follow mode only): Plotly applies a
+        # frame's layout while animating, so the camera moves with the swarm.
+        fig.frames = [go.Frame(name=lab, data=layers(k),
+                               layout={"map": {"center": centre_of(k)}} if follow else None)
                       for k, lab in zip(steps, labels)]
         buttons, slider = _animation_controls(labels)
         fig.update_layout(updatemenus=buttons, sliders=slider)
-    gps = result.stack("gps_pos")
-    # WHY the bounding-box middle (not the mean): the camera must show the
-    # whole flight, and a mean is pulled towards where the swarm lingered.
-    points = gps.reshape(-1, 2)
-    centre = (points.min(axis=0) + points.max(axis=0)) / 2.0
-    extent = float(np.ptp(points, axis=0).max())
-    # WHY explicit colours: the map always sits in a console panel, so its
+    # WHY explicit colours: the map always sits in an instrument panel, so its
     # paper (behind the play controls) must match the panel, not the page.
-    fig.update_layout(template=CONSOLE, height=height, showlegend=False,
+    fig.update_layout(template=PANEL, height=height, showlegend=False, dragmode="pan",
                       paper_bgcolor=P.charcoal, plot_bgcolor=P.charcoal,
                       margin={"l": 0, "r": 0, "t": 0, "b": 64 if len(steps) > 1 else 0})
     if offline:
         fig.update_xaxes(title="East (m)", scaleanchor="y", scaleratio=1)
         fig.update_yaxes(title="North (m)")
     else:
-        lat, lon = enu_to_latlon(float(centre[0]), float(centre[1]))
-        fig.update_layout(map={"style": MAP_STYLE, "center": {"lat": float(lat), "lon": float(lon)},
-                               "zoom": _zoom_for(extent, LAT0, pixels=max(height - 80, 200))})
+        fig.update_layout(map={"style": MAP_STYLE, "center": centre_of(steps[0]), "zoom": zoom})
     return fig
+
+
+CAMERA_MODES = ("follow", "whole")
+FOLLOW_FILL = 0.5           # a normal swarm fills about half of the view
+FOLLOW_FILL_SHOW = 0.67     # the 20-drone light show about two thirds
+MAX_VIEW_PX = 340           # WHY: the map's shorter side; a phone panel is about 340 px wide
+
+
+def _camera(result: SimResult, camera: str, evaluation: bool, light_show: bool,
+            height: int) -> tuple[np.ndarray, float]:
+    """Per-step camera centres (T, 2) in metres and one zoom for the chosen mode.
+
+    The view's shorter side is taken as min(height - 80, MAX_VIEW_PX) pixels
+    (80 px are the play controls), so the swarm also fits on a narrow phone.
+    In "whole" mode every step gets the same centre.
+    """
+    pixels = float(min(max(height - 80, 200), MAX_VIEW_PX))
+    gps = result.stack("gps_pos")
+    if camera == "follow":
+        return camera_follow(gps, pixels, FOLLOW_FILL_SHOW if light_show else FOLLOW_FILL)
+    points = gps.reshape(-1, 2)
+    if evaluation:  # evaluation view also draws the truth, so keep it in frame
+        points = np.vstack([points, result.stack("true_pos").reshape(-1, 2)])
+    centre, zoom = camera_whole(points, pixels)
+    return np.repeat(centre[None, :], result.n_steps, axis=0), zoom
 
 
 # --------------------------------------------------------------------------
@@ -404,13 +551,17 @@ def detector_timeseries(pipe: PipelineResult, drone: int, onset: float | None = 
 
 
 def residual_heatmap(obs: ObservedFrame, tau_a: float) -> go.Figure:
-    """Detector A's pair residuals |GPS distance - radio range| at one step (paper -> blush -> red)."""
+    """Detector A's pair residuals |GPS distance - radio range| at one step.
+
+    Colour scale card -> vellum -> brass -> brick, with brass at the
+    threshold tau_a, so anything brick-coloured is above the alarm level.
+    """
     residual, _ = geometry_residuals(obs)
     names = [drone_label(i) for i in range(obs.n)]
     zmax = max(2.0 * tau_a, float(np.nanmax(residual)) if np.isfinite(residual).any() else 0.0)
     fig = go.Figure(go.Heatmap(
         z=residual, x=names, y=names, zmin=0, zmax=zmax,
-        colorscale=[[0.0, P.card], [min(tau_a / zmax, 0.99), P.vellum], [1.0, P.status_alarm]],
+        colorscale=_heat_scale(min(tau_a / zmax, 0.99)),
         colorbar={"title": {"text": "residual (m)", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.espresso},
         hovertemplate="%{y} to %{x}: %{z:.2f} m<extra></extra>", xgap=1, ygap=1,
     ))
@@ -555,10 +706,10 @@ def calibration_curve(curves: dict[str, dict[str, list[float]]], target: float,
 
 
 def propagation_heatmap(matrix: np.ndarray) -> go.Figure:
-    """M[i, j] = mean extra displacement of drone j when drone i is spoofed (forest scale)."""
+    """M[i, j] = mean extra displacement of drone j when drone i is spoofed (card -> brick scale)."""
     names = [drone_label(i) for i in range(len(matrix))]
     fig = go.Figure(go.Heatmap(
-        z=matrix, x=names, y=names, colorscale=[[0.0, P.card], [0.5, P.brass_2], [1.0, P.olive]],
+        z=matrix, x=names, y=names, colorscale=_heat_scale(0.66),
         colorbar={"title": {"text": "metres", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.espresso},
         hovertemplate="spoof %{y} -> %{x} moved %{z:.2f} m<extra></extra>", xgap=1, ygap=1))
     fig.update_yaxes(title="spoofed drone", autorange="reversed", showgrid=False)
@@ -647,7 +798,11 @@ def min_separation_chart(times: np.ndarray, separation: np.ndarray, limit: float
 def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: np.ndarray | None,
                  outlier_anchors: Sequence[int], repaired: dict[int, np.ndarray] | None = None,
                  truth: np.ndarray | None = None) -> go.Figure:
-    """Reported GPS vs recovered positions, anchors (inlier / RANSAC outlier), repairs and (optional) truth."""
+    """Reported GPS vs recovered positions, anchors (inlier / RANSAC outlier), repairs and (optional) truth.
+
+    Drawn in the instrument-panel template (it sits in a charcoal panel);
+    dragging pans, like the swarm map.
+    """
     fig = go.Figure()
     gps = obs.gps_pos
     names = [drone_label(i) for i in range(obs.n)]
@@ -657,22 +812,22 @@ def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: 
         for i in range(obs.n):
             lx += [gps[i, 0], positions[i, 0], None]
             ly += [gps[i, 1], positions[i, 1], None]
-        fig.add_trace(go.Scatter(x=lx, y=ly, mode="lines", line={"color": P.stone_text, "width": 1},
+        fig.add_trace(go.Scatter(x=lx, y=ly, mode="lines", line={"color": P.char_mute, "width": 1},
                                  hoverinfo="skip", name="GPS to recovered"))
     fig.add_trace(go.Scatter(x=gps[:, 0], y=gps[:, 1], mode="markers", name="reported GPS", text=names,
-                             marker={"symbol": "circle-open", "size": 11, "color": P.espresso, "line": {"width": 1.5}},
+                             marker={"symbol": "circle-open", "size": 11, "color": P.char_text, "line": {"width": 1.5}},
                              hovertemplate="%{text} GPS<extra></extra>"))
     if positions is not None:
         fig.add_trace(go.Scatter(x=positions[:, 0], y=positions[:, 1], mode="markers", name="recovered",
                                  text=names, hovertemplate="%{text} recovered<extra></extra>",
-                                 marker={"size": 10, "color": P.olive, "line": {"color": P.espresso, "width": 1}}))
+                                 marker={"size": 10, "color": P.amber, "line": {"color": P.charcoal, "width": 1}}))
     anchored = np.flatnonzero(obs.anchor_mask)
     if anchored.size:
         inl = [i for i in anchored if i not in set(outlier_anchors)]
         if inl:
             fig.add_trace(go.Scatter(x=obs.anchor_pos[inl, 0], y=obs.anchor_pos[inl, 1], mode="markers",
                                      name="anchor (inlier)", marker={"symbol": "diamond", "size": 12, "color": P.det_c,
-                                                                     "line": {"color": P.espresso, "width": 1}}))
+                                                                     "line": {"color": P.card, "width": 1}}))
         if outlier_anchors:
             out = list(outlier_anchors)
             fig.add_trace(go.Scatter(x=obs.anchor_pos[out, 0], y=obs.anchor_pos[out, 1], mode="markers",
@@ -683,15 +838,16 @@ def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: 
         pts = np.array([repaired[i] for i in ids])
         fig.add_trace(go.Scatter(x=pts[:, 0], y=pts[:, 1], mode="markers", name="multilateration repair",
                                  text=[drone_label(i) for i in ids], hovertemplate="%{text} repaired<extra></extra>",
-                                 marker={"symbol": "square", "size": 10, "color": P.brass_2,
-                                         "line": {"color": P.espresso, "width": 1.5}}))
+                                 marker={"symbol": "square", "size": 10, "color": P.brass,
+                                         "line": {"color": P.card, "width": 1}}))
     if truth is not None:
         fig.add_trace(go.Scatter(x=truth[:, 0], y=truth[:, 1], mode="markers", name="true position (evaluation)",
-                                 marker={"symbol": "cross-thin-open", "size": 10, "color": P.ink_2,
+                                 marker={"symbol": "cross-thin-open", "size": 10, "color": P.char_mute,
                                          "line": {"width": 1.5}}))
     fig.update_xaxes(title="East (m)", scaleanchor="y", scaleratio=1)
     fig.update_yaxes(title="North (m)")
-    fig.update_layout(template=LIGHT, height=480)
+    fig.update_layout(template=PANEL, height=480, dragmode="pan",
+                      margin={"l": 16, "r": 20, "t": 48, "b": 16})
     return fig
 
 
@@ -722,7 +878,7 @@ def attack_vector_chart(times: np.ndarray, vectors: np.ndarray, onset: float | N
 def architecture_dot() -> str:
     """The processing pipeline as a Graphviz DOT string in palette colours."""
     node = (f'node [shape=box, style="rounded,filled", fillcolor="{P.card}", color="{P.espresso}", '
-            f'penwidth=1.5, fontname="Inter", fontsize=11, fontcolor="{P.espresso}", margin="0.18,0.08"];')
+            f'penwidth=1.5, fontname="IBM Plex Sans", fontsize=11, fontcolor="{P.espresso}", margin="0.18,0.08"];')
 
     def det(name: str, label: str, colour: str) -> str:
         """A detector node outlined in its fixed colour."""
@@ -733,11 +889,11 @@ def architecture_dot() -> str:
         node, f'edge [color="{P.ink_2}", arrowsize=0.7, penwidth=1.2];',
         'sim [label="Swarm simulator\\n(truth + sensors)"];',
         'atk [label="Simulated GPS spoof\\n(software offsets)"];',
-        f'obs [label="ObservedFrame\\n(no truth fields)", fillcolor="{P.brass}"];',
+        f'obs [label="ObservedFrame\\n(no truth fields)", fillcolor="{P.sage}"];',
         det("A", "A  relative geometry", P.det_a), det("B", "B  motion consistency", P.det_b),
         det("C", "C  absolute anchors", P.det_c),
         'rec [label="Recovery\\nMDS + RANSAC"];',
-        f'fus [label="Dempster-Shafer\\nfusion", fillcolor="{P.brass}"];',
+        f'fus [label="Dempster-Shafer\\nfusion", fillcolor="{P.vellum}"];',
         'inc [label="Incident +\\nexplanation"];',
         f'pkg [label="Signed evidence\\npackage", color="{P.olive}", penwidth=2];',
         "sim -> obs; atk -> obs; obs -> A; obs -> B; obs -> C; obs -> rec;",

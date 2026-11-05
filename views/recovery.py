@@ -73,7 +73,7 @@ def evaluation_table(pipe: PipelineResult, k: int, repairs: dict[int, RepairResu
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Position", "recovery", eyebrow="Analysis",
+    c.page_header("Position", "recovery", eyebrow="06 · Recovery",
                   caption="Estimating true positions from radio ranges and anchors. Simulation result.")
     pipe = c.require_run("recovery")
     if pipe is None:
@@ -92,13 +92,14 @@ def main() -> None:
     if not ok:
         st.warning("MDS recovery was not possible at this step: "
                    f"{res.status.value.replace('_', ' ') if res else 'not run'}.")
-    with c.paper_card("recovery-map"):
-        c.chart(plots.recovery_map(obs, res.positions if ok else None, res.inlier_mask if ok else None,
-                                   res.outlier_anchors if ok else [], repaired, truth), key="rec-map")
-    c.explain_box("Hollow circles are the reported GPS positions; filled forest dots are where MDS + RANSAC "
-                  "puts the drones; grey lines join the two, so a swarm-wide shift shows as many parallel "
-                  "lines. Ochre diamonds are anchors RANSAC trusted; a red cross is an anchor it rejected. "
-                  "Lavender squares are multilateration repairs of flagged drones.")
+    c.console_panel("Recovery map · metres", lambda: c.chart(
+        plots.recovery_map(obs, res.positions if ok else None, res.inlier_mask if ok else None,
+                           res.outlier_anchors if ok else [], repaired, truth), key="rec-map"),
+        key="rec-map", live="Evaluation view: ground truth" if show_truth else None)
+    c.explain_box("Hollow circles are the reported GPS positions; filled amber dots are where MDS + RANSAC "
+                  "puts the drones; faint lines join the two, so a swarm-wide shift shows as many parallel "
+                  "lines. Ochre diamonds are anchors RANSAC trusted; a brick-red cross is an anchor it rejected. "
+                  "Brass squares are multilateration repairs of flagged drones.")
     c.section("Estimated attack vector", "Mean of (GPS - recovered position) over all drones.")
     c.chart(plots.attack_vector_chart(times, pipe.recovery.attack_vector_series(),
                                       pipe.sim_result.attack_onset()), key="rec-vec")

@@ -41,7 +41,7 @@ def latest_incidents() -> None:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Swarm", "dashboard", eyebrow="Operations",
+    c.page_header("Swarm", "dashboard", eyebrow="01 · Operations dashboard",
                   caption="Fused verdicts, live map and detection events for the current run. "
                           "Simulation result.")
     pipe = c.require_run("dashboard")
@@ -59,13 +59,19 @@ def main() -> None:
     events = build_events(pipe, upto_t=t)
     light = st.session_state.get("scenario_key") == "light_show_pune"
     left, right = st.columns([1.7, 1])
+    def live_map() -> None:
+        # WHY the camera control lives inside the panel: it belongs to the map.
+        # The time comes from the slider above, so switching camera keeps it.
+        camera = c.camera_control("dash")
+        c.chart(plots.swarm_map(pipe.sim_result, verdict_strings(pipe), step=k, light_show=light,
+                                height=470, camera=camera), key=f"dash-map-{camera}")
+
     with left:
-        c.console_panel("Live map · Pune", lambda: c.chart(
-            plots.swarm_map(pipe.sim_result, verdict_strings(pipe), step=k, light_show=light, height=470),
-            key="dash-map"), key="dash-map", live=f"t = {times[k]:.1f} s")
+        c.console_panel("Live map · Pune", live_map, key="dash-map", live=f"t = {times[k]:.1f} s")
     with right:
         c.event_feed(events, key="dash-feed", limit=9)
     c.ribbon(events)
+    c.hash_ribbon(slim=True)
 
     c.section("Drones", "Per-drone detector statuses and fused verdict at the chosen time.")
     c.drone_table(drone_rows(pipe, k), key="dash-table")

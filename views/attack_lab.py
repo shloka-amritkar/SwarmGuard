@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+import pandas as pd
 import streamlit as st
 
 from analysis.calibration import load_or_default
@@ -178,6 +179,15 @@ def build_configs(p: str, base: Scenario) -> tuple[SimConfig, AttackConfig, Dete
     return sim, atk, detector_controls(p, load_or_default(sim))
 
 
+def expected_pills_html(check: pd.DataFrame) -> str:
+    """One pill per detector: sage "AS EXPECTED" or brick "DIFFERS", always with text."""
+    pills = []
+    for row in check.itertuples(index=False):
+        status = "pass" if row.check == "as expected" else "fail"
+        pills.append(c.status_pill_html(status, f"{row.detector.split(' ·')[0]} · {row.check}"))
+    return f'<div class="sg-pills">{"".join(pills)}</div>'
+
+
 def results(expected: dict[str, str]) -> None:
     """Results of the last Attack Lab run."""
     pipe = st.session_state.get("pipeline")
@@ -192,6 +202,7 @@ def results(expected: dict[str, str]) -> None:
     check = expected_vs_actual(expected, pipe)
     if not check.empty:
         c.section("Expected vs actual", "What the preset documents each detector should do.")
+        c.html_block(expected_pills_html(check))
         st.dataframe(check, hide_index=True, width="stretch")
     incident = st.session_state.get("incident_id")
     if incident:
@@ -205,7 +216,7 @@ def results(expected: dict[str, str]) -> None:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Attack", "lab", eyebrow="Operations",
+    c.page_header("Attack", "lab", eyebrow="03 · Attack lab",
                   caption="Design a flight and a simulated GPS spoof, then see which detectors catch it. "
                           "All attacks are software offsets on simulated numbers.")
     left, right = st.columns([1, 1.15], gap="large")

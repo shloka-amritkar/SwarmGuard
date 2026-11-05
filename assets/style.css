@@ -1,30 +1,45 @@
 /* ==========================================================================
-   SwarmGuard stylesheet - "Ivory + Console" (docs/phases/phase-5.md 5.3-5.8)
+   SwarmGuard stylesheet - "Ground Truth" (docs/phases/phase-7.md, part B)
+   Topographic survey meets forensic case file, with amber instrument panels.
 
    RULE: this file contains NO colour values. Every colour is a CSS custom
    property (var(--sg-...)) generated from core/palette.py by
-   ui/theme.py:css_variables(), which also prepends the Google Fonts import.
+   ui/theme.py:css_variables(), which also prepends the Google Fonts import,
+   the contour background (M1) and the crosshair corner marks (M2).
    Tints use color-mix(), so no extra colours are invented.
 
    Sections
-     1 base and Streamlit chrome     6 widgets
-     2 navigation (floating pill)    7 alerts, toasts, expanders, tabs
-     3 typography and layout        8 SwarmGuard components (.sg-*)
-     4 entrance motion               9 verification motion
-     5 tactile buttons              10 responsive + reduced motion
+     1 base, contours, Streamlit chrome     6 widgets
+     2 top bar and navigation               7 alerts, toasts, expanders, tabs
+     3 typography and layout                8 Ground Truth components (.sg-*)
+     4 entrance motion                      9 verification, stamps, motion
+     5 buttons                             10 responsive + reduced motion
    ========================================================================== */
 
-/* -------------------------------------------------------------- 1 base -- */
+/* ---------------------------------------------- 1 base, contours, chrome -- */
 html, body, .stApp, [data-testid="stAppViewContainer"] {
-  background: var(--sg-sand);
+  background-color: var(--sg-sand);
   color: var(--sg-espresso);
   font-family: var(--sg-font-sans);
   font-size: var(--sg-size-body);
   line-height: 1.6;
 }
 
-/* Hide Streamlit decoration we do not use (the header itself stays: it hosts
-   the top navigation). */
+/* M1: faint topographic contour lines behind everything. The tile is an
+   SVG drawn in the "contour" colour (ui/theme.py:contour_background). */
+.stApp {
+  background-image: var(--sg-contour-bg);
+  background-size: 900px 900px;
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stBottom"] > div { background: transparent; }
+
+/* Hide Streamlit decoration we do not use (the header stays: it hosts the
+   top navigation). */
 [data-testid="stDecoration"],
 [data-testid="stAppDeployButton"],
 [data-testid="stMainMenu"],
@@ -36,32 +51,66 @@ footer {
 
 [data-testid="stMainBlockContainer"] {
   max-width: var(--sg-max-width);
-  padding: 96px var(--sg-gutter) 72px var(--sg-gutter);
+  padding: calc(var(--sg-navbar-height) + 40px) var(--sg-gutter) 72px var(--sg-gutter);
 }
 
-::selection { background: var(--sg-brass-2); color: var(--sg-espresso); }
+::selection { background: var(--sg-sage); color: var(--sg-espresso); }
 
 a, a:visited { color: var(--sg-olive); text-underline-offset: 3px; }
 a:hover { color: var(--sg-olive-2); }
 
-/* --------------------------------------------------- 2 floating pill nav -- */
-[data-testid="stHeader"] {
-  background: transparent;
-  height: auto;
+/* ---------------------------------------------------- 2 top bar + nav -- */
+/* The bar itself (wordmark left, readout right) is .sg-topbar, drawn by
+   ui/components.navbar_html. Streamlit's own header (with the page links)
+   is made transparent and laid over the middle of that bar, so together
+   they read as ONE 64px bar. */
+.sg-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--sg-navbar-height);
+  z-index: 999980;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 var(--sg-gutter);
+  background: var(--sg-sand);
+  border-bottom: var(--sg-outline-card) solid var(--sg-espresso);
+  pointer-events: none;            /* clicks pass through to the links above */
 }
 
+.sg-topbar__left,
+.sg-topbar__right { display: flex; align-items: center; gap: 12px; pointer-events: auto; }
+
+[data-testid="stHeader"] {
+  background: transparent;
+  height: var(--sg-navbar-height);
+  z-index: 999990;
+  pointer-events: none;            /* only the nav itself takes clicks */
+}
+
+[data-testid="stHeader"] > * { pointer-events: auto; }
+
 [data-testid="stTopNav"] {
-  background: var(--sg-card);
-  border: var(--sg-outline-card) solid var(--sg-espresso);
-  border-radius: 999px;
-  margin: 12px auto 0 auto;
-  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  /* Pinned just right of the wordmark (not centred), so the live readout on
+     the right never overlaps the links. WHY absolute: Streamlit's header row
+     spreads its children apart (space-between), which pushed the links right. */
+  position: absolute;
+  left: 200px;
+  top: 0;
+  margin: 0;
+  height: var(--sg-navbar-height);
   /* WHY a definite width: Streamlit measures the nav to decide how many
-     sections fit; fit-content made that measurement circular, so it
-     sometimes collapsed to "Operations + 6 more". */
-  width: min(520px, calc(100vw - 32px));
-  justify-content: center;
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
+     sections fit; fit-content made that measurement circular. */
+  width: min(480px, calc(100vw - 32px));
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
 }
 
 [data-testid="stTopNavLink"],
@@ -71,32 +120,36 @@ a:hover { color: var(--sg-olive-2); }
   font-weight: 500;
   font-size: 14px;
   color: var(--sg-ink-2);
-  border-radius: 999px;
+  border-radius: var(--sg-radius-button);
   transition: color var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
 }
 
 [data-testid="stTopNavLink"]:hover,
 [data-testid="stTopNavSection"]:hover {
   color: var(--sg-olive);
-  background: var(--sg-sand);
+  background: var(--sg-vellum);
 }
 
-/* Active link: forest text with an underline that slides in from the centre. */
-[data-testid="stTopNavLink"]::after {
+/* Active link: olive with a 2px underline that slides in (240 ms).
+   Streamlit rebuilds the bar on every page change, so the line slides in
+   from the left on arrival rather than travelling between links. */
+[data-testid="stTopNavLink"]::after,
+[data-testid="stTopNavSection"]::after {
   content: "";
   position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 3px;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
   height: 2px;
-  border-radius: 2px;
   background: var(--sg-olive);
   transform: scaleX(0);
+  transform-origin: left center;
   transition: transform var(--sg-dur-enter) var(--sg-ease);
 }
 
 [data-testid="stTopNavLink"][aria-current="page"],
-[data-testid="stTopNavLink"][aria-selected="true"] {
+[data-testid="stTopNavLink"][aria-selected="true"],
+[data-testid="stTopNavSection"]:has([aria-current="page"]) {
   color: var(--sg-olive);
   font-weight: 600;
 }
@@ -104,10 +157,11 @@ a:hover { color: var(--sg-olive-2); }
 [data-testid="stTopNavLink"][aria-current="page"]::after,
 [data-testid="stTopNavLink"][aria-selected="true"]::after {
   transform: scaleX(1);
+  animation: sg-underline var(--sg-dur-enter) var(--sg-ease) both;
 }
 
-/* Links inside the section menus (desktop) and the sidebar (phones):
-   lavender = the interaction colour, forest text = the brand colour. */
+@keyframes sg-underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 [data-testid="stTopNavDropdownLink"],
 [data-testid="stSidebarNavLink"] {
   border-radius: var(--sg-radius-input);
@@ -115,12 +169,12 @@ a:hover { color: var(--sg-olive-2); }
 }
 
 [data-testid="stTopNavDropdownLink"]:hover,
-[data-testid="stSidebarNavLink"]:hover { background: var(--sg-sand); }
+[data-testid="stSidebarNavLink"]:hover { background: var(--sg-vellum); }
 
 [data-testid="stTopNavDropdownLink"][aria-current="page"],
 [data-testid="stSidebarNavLink"][aria-current="page"] {
-  background: var(--sg-brass);
-  box-shadow: inset 0 0 0 1.5px var(--sg-espresso);
+  background: var(--sg-sage);
+  box-shadow: inset 0 0 0 1px var(--sg-olive);
 }
 
 [data-testid="stTopNavDropdownLink"][aria-current="page"] p,
@@ -142,20 +196,7 @@ a:hover { color: var(--sg-olive-2); }
   box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
 }
 
-/* Context bar under the navigation: wordmark, page, status, scenario. */
-.sg-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-bottom: 16px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--sg-rule);
-}
-
-.sg-topbar__right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
+/* Wordmark: radar mark + SWARMGUARD in Plex Mono 500, letter-spaced. */
 .sg-wordmark {
   display: inline-flex;
   align-items: center;
@@ -165,19 +206,39 @@ a:hover { color: var(--sg-olive-2); }
   line-height: 1;
 }
 
-.sg-wordmark__swarm {
-  font-family: var(--sg-font-sans);
-  font-weight: 300;
-  letter-spacing: 0.18em;
-  font-size: 15px;
+.sg-wordmark__text {
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.14em;
 }
 
-.sg-wordmark__guard {
-  font-family: var(--sg-font-display);
-  font-weight: 800;
-  font-size: 17px;
-  margin-left: -6px;
+/* Live readout: coordinates and a CSS-only UTC clock. */
+.sg-readout {
+  font-family: var(--sg-font-mono);
+  font-size: 12px;
+  color: var(--sg-stone-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+
+@property --sg-h { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --sg-m { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --sg-s { syntax: "<integer>"; inherits: false; initial-value: 0; }
+
+@keyframes sg-tick-h { from { --sg-h: 0; } to { --sg-h: 24; } }
+@keyframes sg-tick-m { from { --sg-m: 0; } to { --sg-m: 60; } }
+@keyframes sg-tick-s { from { --sg-s: 0; } to { --sg-s: 60; } }
+
+/* steps(N, jump-start) would skip 0, so jump-end: the values are 0..N-1. */
+.sg-clock__h { animation: sg-tick-h 86400s steps(24, jump-end) infinite; counter-reset: sg-h var(--sg-h); }
+.sg-clock__m { animation: sg-tick-m 3600s steps(60, jump-end) infinite; counter-reset: sg-m var(--sg-m); }
+.sg-clock__s { animation: sg-tick-s 60s steps(60, jump-end) infinite; counter-reset: sg-s var(--sg-s); }
+/* The start offset comes from the server time via --sg-delay (inline). */
+.sg-clock__h, .sg-clock__m, .sg-clock__s { animation-delay: var(--sg-delay, 0s); }
+.sg-clock__h::after { content: counter(sg-h, decimal-leading-zero); }
+.sg-clock__m::after { content: counter(sg-m, decimal-leading-zero); }
+.sg-clock__s::after { content: counter(sg-s, decimal-leading-zero); }
 
 .sg-scenario-tag {
   font-family: var(--sg-font-mono);
@@ -186,7 +247,8 @@ a:hover { color: var(--sg-olive-2); }
   border: 1px solid var(--sg-rule);
   background: var(--sg-card);
   border-radius: 999px;
-  padding: 3px 10px;
+  padding: 2px 10px;
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------- 3 typography + layout -- */
@@ -195,23 +257,27 @@ h1, h2, h3, h4, h5, h6,
 [data-testid="stMarkdownContainer"] h2,
 [data-testid="stMarkdownContainer"] h3 {
   color: var(--sg-espresso);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
 }
 
 h1, [data-testid="stMarkdownContainer"] h1 {
   font-family: var(--sg-font-serif);
-  font-weight: 400;
+  font-optical-sizing: auto;
+  font-weight: 500;
   font-size: var(--sg-size-title);
   line-height: 1.1;
 }
 
 h2, h3, [data-testid="stMarkdownContainer"] h2, [data-testid="stMarkdownContainer"] h3 {
-  font-family: var(--sg-font-display);
-  font-weight: 700;
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
 }
 
-p, li, label, [data-testid="stMarkdownContainer"] {
-  font-family: var(--sg-font-sans);
+p, li, label, [data-testid="stMarkdownContainer"] { font-family: var(--sg-font-sans); }
+
+[data-testid="stCaptionContainer"], .stCaption, small {
+  color: var(--sg-stone-text);
+  font-size: var(--sg-size-caption);
 }
 
 code, pre, kbd, .sg-mono {
@@ -220,7 +286,7 @@ code, pre, kbd, .sg-mono {
 }
 
 [data-testid="stMarkdownContainer"] code {
-  background: var(--sg-sand);
+  background: var(--sg-vellum);
   color: var(--sg-olive);
   border: 1px solid var(--sg-rule);
   border-radius: 6px;
@@ -232,10 +298,11 @@ code, pre, kbd, .sg-mono {
 
 .sg-page-title {
   font-family: var(--sg-font-serif);
-  font-weight: 400;
+  font-optical-sizing: auto;
+  font-weight: 500;
   font-size: var(--sg-size-title);
   line-height: 1.08;
-  margin: 6px 0 8px 0;
+  margin: 8px 0 8px 0;
   color: var(--sg-espresso);
 }
 
@@ -243,23 +310,22 @@ code, pre, kbd, .sg-mono {
 
 .sg-page-caption { color: var(--sg-ink-2); max-width: 760px; margin: 0; }
 
+/* Eyebrow: "02 · DETECTION ANALYSIS" in Plex Mono. */
 .sg-eyebrow {
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
   font-size: var(--sg-size-eyebrow);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--sg-stone-text);
   margin: 0;
 }
 
-.sg-section {
-  margin: var(--sg-section-gap) 0 16px 0;
-}
+.sg-section { margin: var(--sg-section-gap) 0 16px 0; }
 
 .sg-section__title {
-  font-family: var(--sg-font-display);
-  font-weight: 700;
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
   font-size: var(--sg-size-section);
   margin: 4px 0 4px 0;
   color: var(--sg-espresso);
@@ -275,7 +341,7 @@ code, pre, kbd, .sg-mono {
   color: var(--sg-stone-text);
 }
 
-/* Visually hidden but read by screen readers (used by the KPI count-up). */
+/* Visually hidden but read by screen readers (count-up, clock). */
 .sg-sr {
   position: absolute !important;
   width: 1px; height: 1px;
@@ -285,38 +351,42 @@ code, pre, kbd, .sg-mono {
 }
 
 /* ------------------------------------------------------ 4 entrance motion -- */
+/* Content blocks fade in and rise 8px, staggered 40 ms (max 6 steps).
+   The block that holds the fixed top bar is skipped: a transform on an
+   ancestor would pin the "fixed" bar to that block instead of the window. */
 @keyframes sg-enter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > * {
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :not(:has(.sg-topbar)) {
   animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both;
 }
 
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(2) { animation-delay: 40ms; }
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(3) { animation-delay: 80ms; }
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(4) { animation-delay: 120ms; }
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(5) { animation-delay: 160ms; }
-[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(n+6) { animation-delay: 200ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :nth-child(3) { animation-delay: 40ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :nth-child(4) { animation-delay: 80ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :nth-child(5) { animation-delay: 120ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :nth-child(6) { animation-delay: 160ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > :nth-child(n+7) { animation-delay: 200ms; }
 
 .sg-enter { animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both; }
 
-/* ------------------------------------------------------ 5 tactile buttons -- */
+/* -------------------------------------------------------------- 5 buttons -- */
+/* Secondary (Streamlit's default type): card fill. Primary: brass fill.
+   Both: espresso text, 1.5px outline, 8px radius, hard 3px shadow; lift on
+   hover, press INTO the shadow on click, CSS-only brass ripple. */
 .stButton > button,
 .stDownloadButton > button,
 .stFormSubmitButton > button,
-[data-testid="stBaseButton-primary"],
-[data-testid="stBaseButton-secondary"],
 .sg-btn {
   position: relative;
   overflow: hidden;
   isolation: isolate;
   font-family: var(--sg-font-sans);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--sg-espresso);
-  background: var(--sg-brass);
+  background: var(--sg-card);
   border: var(--sg-outline-button) solid var(--sg-espresso);
   border-radius: var(--sg-radius-button);
   box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
@@ -330,7 +400,7 @@ code, pre, kbd, .sg-mono {
 
 .stButton > button p,
 .stDownloadButton > button p,
-.stFormSubmitButton > button p { font-weight: 600; }
+.stFormSubmitButton > button p { font-weight: 600; font-size: 14px; }
 
 .stButton > button:hover,
 .stDownloadButton > button:hover,
@@ -338,10 +408,16 @@ code, pre, kbd, .sg-mono {
 .sg-btn:hover {
   color: var(--sg-espresso);
   border-color: var(--sg-espresso);
-  background: var(--sg-brass-2);
+  background: var(--sg-vellum);
   transform: translate(-1px, -1px);
   box-shadow: calc(var(--sg-shadow-button) + 1px) calc(var(--sg-shadow-button) + 1px) 0 var(--sg-espresso);
 }
+
+.stButton > button[data-testid="stBaseButton-primary"],
+.stFormSubmitButton > button[data-testid="stBaseButton-primaryFormSubmit"] { background: var(--sg-brass); }
+
+.stButton > button[data-testid="stBaseButton-primary"]:hover,
+.stFormSubmitButton > button[data-testid="stBaseButton-primaryFormSubmit"]:hover { background: var(--sg-brass-2); }
 
 /* Press into the shadow. */
 .stButton > button:active,
@@ -353,7 +429,7 @@ code, pre, kbd, .sg-mono {
   transition-duration: var(--sg-dur-press);
 }
 
-/* CSS-only ripple: a lavender circle grows from the centre while pressed. */
+/* CSS-only ripple: a brass_2 circle grows from the centre while pressed. */
 .stButton > button::after,
 .stDownloadButton > button::after,
 .stFormSubmitButton > button::after,
@@ -378,12 +454,13 @@ code, pre, kbd, .sg-mono {
 .stFormSubmitButton > button:active::after,
 .sg-btn:active::after {
   transform: translate(-50%, -50%) scale(1);
-  opacity: 1;
+  opacity: 0.55;
   transition-duration: 0ms;
 }
 
 .stButton > button:focus-visible,
 .stDownloadButton > button:focus-visible,
+.stFormSubmitButton > button:focus-visible,
 .sg-btn:focus-visible {
   outline: 2px solid var(--sg-olive);
   outline-offset: 3px;
@@ -391,50 +468,57 @@ code, pre, kbd, .sg-mono {
 
 .stButton > button:disabled,
 .stDownloadButton > button:disabled {
-  background: var(--sg-sand);
+  background: var(--sg-vellum);
   color: var(--sg-stone-text);
-  border-color: var(--sg-stone-text);
+  border-color: var(--sg-stone);
   box-shadow: none;
   transform: none;
 }
 
-/* Secondary buttons (type="secondary", the Streamlit default): paper fill.
-   WHY the long selector: ".stButton > button" above is more specific than a
-   bare [data-testid] selector, so the type has to be added to it. */
-.stButton > button[data-testid="stBaseButton-secondary"],
-.stDownloadButton > button[data-testid="stBaseButton-secondary"] { background: var(--sg-card); }
-.stButton > button[data-testid="stBaseButton-secondary"]:hover,
-.stDownloadButton > button[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-sand); }
-
-/* Tertiary buttons read as text links. */
-[data-testid="stBaseButton-tertiary"] {
+/* Quiet (tertiary) buttons: olive text whose underline grows on hover. */
+.stButton > button[data-testid="stBaseButton-tertiary"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
   color: var(--sg-olive);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  padding: 4px 0;
+  min-height: 0;
 }
 
-/* Destructive variant (tamper test only): put the button in
-   st.container(key="sg-danger-..."). Red fill, white text. */
-[class*="st-key-sg-danger"] .stButton > button {
-  background: var(--sg-status-alarm);
-  color: var(--sg-card);
+.stButton > button[data-testid="stBaseButton-tertiary"]::after {
+  left: 0;
+  top: auto;
+  bottom: 2px;
+  width: 100%;
+  height: 1.5px;
+  aspect-ratio: auto;
+  border-radius: 0;
+  background: var(--sg-olive);
+  transform: scaleX(0.3);
+  transform-origin: left center;
+  opacity: 1;
+  z-index: 0;
 }
 
-[class*="st-key-sg-danger"] .stButton > button p { color: var(--sg-card); }
+.stButton > button[data-testid="stBaseButton-tertiary"]:hover {
+  background: transparent;
+  transform: none;
+  box-shadow: none;
+  color: var(--sg-olive-2);
+}
 
+.stButton > button[data-testid="stBaseButton-tertiary"]:hover::after { transform: scaleX(1); }
+
+/* Destructive (tamper test only): st.container(key="sg-danger-...").
+   Brick fill, sand text, same mechanics. */
+[class*="st-key-sg-danger"] .stButton > button { background: var(--sg-status-alarm); color: var(--sg-sand); }
+[class*="st-key-sg-danger"] .stButton > button p { color: var(--sg-sand); }
 [class*="st-key-sg-danger"] .stButton > button:hover {
-  background: var(--sg-status-alarm);
-  color: var(--sg-card);
-  filter: brightness(0.92);
+  background: color-mix(in srgb, var(--sg-status-alarm) 88%, var(--sg-espresso));
+  color: var(--sg-sand);
 }
-
-[class*="st-key-sg-danger"] .stButton > button::after {
-  background: var(--sg-espresso);
-  opacity: 0;
-}
-
-[class*="st-key-sg-danger"] .stButton > button:active::after { opacity: 0.18; }
+[class*="st-key-sg-danger"] .stButton > button::after { background: var(--sg-espresso); }
+[class*="st-key-sg-danger"] .stButton > button:active::after { opacity: 0.2; }
 
 /* ------------------------------------------------------------- 6 widgets -- */
 [data-baseweb="input"],
@@ -443,7 +527,7 @@ code, pre, kbd, .sg-mono {
 [data-testid="stNumberInput"] [data-baseweb="input"],
 [data-testid="stDateInput"] [data-baseweb="input"] {
   background: var(--sg-card);
-  border: var(--sg-outline-button) solid var(--sg-espresso) !important;
+  border: var(--sg-outline-card) solid var(--sg-espresso) !important;
   border-radius: var(--sg-radius-input) !important;
   font-family: var(--sg-font-sans);
   transition: box-shadow var(--sg-dur-hover) var(--sg-ease);
@@ -452,7 +536,7 @@ code, pre, kbd, .sg-mono {
 [data-baseweb="input"]:focus-within,
 [data-baseweb="textarea"]:focus-within,
 [data-baseweb="select"] > div:focus-within {
-  box-shadow: 0 0 0 3px var(--sg-brass);
+  box-shadow: 0 0 0 2px var(--sg-olive);
 }
 
 [data-baseweb="input"] input,
@@ -467,7 +551,7 @@ code, pre, kbd, .sg-mono {
   border-left: 1px solid var(--sg-rule);
 }
 
-[data-testid="stNumberInput"] button:hover { background: var(--sg-brass); color: var(--sg-espresso); }
+[data-testid="stNumberInput"] button:hover { background: var(--sg-sage); color: var(--sg-espresso); }
 
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] label {
@@ -477,7 +561,6 @@ code, pre, kbd, .sg-mono {
   color: var(--sg-ink-2);
 }
 
-/* Dropdown menu of selects. */
 [data-baseweb="popover"] ul[role="listbox"],
 [data-baseweb="menu"] {
   background: var(--sg-card);
@@ -486,26 +569,24 @@ code, pre, kbd, .sg-mono {
 }
 
 [data-baseweb="menu"] li[aria-selected="true"],
-ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-brass); }
+ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-sage); }
 
 [data-baseweb="tag"] {
-  background: var(--sg-brass) !important;
+  background: var(--sg-sage) !important;
   color: var(--sg-espresso) !important;
   border: 1px solid var(--sg-espresso);
   border-radius: 999px !important;
 }
 
-/* Sliders: forest track and an outlined thumb. */
-/* Streamlit 1.66 builds sliders with React Aria: the group holds a track
-   whose first child is the rail and whose [data-rac] child is the thumb. */
+/* Sliders (Streamlit 1.66 builds them with React Aria: the group holds a
+   track whose first child is the rail and whose [data-rac] child is the
+   thumb). Olive fill comes from primaryColor in .streamlit/config.toml. */
 [data-testid="stSlider"] [role="group"] > div > div:first-child {
-  box-shadow: inset 0 0 0 1px var(--sg-rule);   /* the unfilled rail stays visible on paper */
+  box-shadow: inset 0 0 0 1px var(--sg-rule);
   border-radius: 999px;
 }
 
-[data-testid="stSlider"] [role="group"] > div > div[data-rac] {
-  border-radius: 50%;
-}
+[data-testid="stSlider"] [role="group"] > div > div[data-rac] { border-radius: 50%; }
 
 [data-testid="stSlider"] [role="group"] > div > div[data-rac],
 [data-testid="stSlider"] [role="slider"] {
@@ -520,15 +601,9 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-brass); }
 [data-testid="stSlider"] [role="group"] > div > div[data-rac]:hover,
 [data-testid="stSlider"] [role="slider"]:hover { transform: translate(-50%, -50%) scale(1.1); }
 
-[data-testid="stSliderThumbValue"] {
-  font-family: var(--sg-font-mono);
-  color: var(--sg-olive);
-  font-size: 12px;
-}
-
+[data-testid="stSliderThumbValue"] { font-family: var(--sg-font-mono); color: var(--sg-olive); font-size: 12px; }
 [data-testid="stSliderTickBar"] { font-family: var(--sg-font-mono); color: var(--sg-stone-text); }
 
-/* Checkbox, toggle and radio: forest accent with a smooth state change. */
 [data-testid="stCheckbox"] label span,
 [data-testid="stRadio"] label div:first-child {
   transition: background var(--sg-dur-hover) var(--sg-ease), border-color var(--sg-dur-hover) var(--sg-ease);
@@ -539,7 +614,29 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-brass); }
 
 input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
-/* Data tables: outlined card, mono numbers inside (canvas-drawn by Streamlit). */
+/* Segmented control (camera mode): outlined segments, sage when selected. */
+[data-testid="stButtonGroup"] button {
+  font-family: var(--sg-font-sans);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--sg-ink-2);
+  background: var(--sg-card);
+  border-color: var(--sg-espresso);
+  transition: background var(--sg-dur-hover) var(--sg-ease), color var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-testid="stButtonGroup"] button:hover { background: var(--sg-vellum); color: var(--sg-olive); }
+
+[data-testid="stButtonGroup"] button[data-testid$="Active"],
+[data-testid="stButtonGroup"] button[aria-checked="true"] {
+  background: var(--sg-sage);
+  color: var(--sg-olive);
+  font-weight: 600;
+}
+
+[data-testid="stButtonGroup"] button p { color: inherit; font-weight: inherit; }
+
+/* Data tables: outlined card (header fill comes from config.toml). */
 [data-testid="stDataFrame"],
 [data-testid="stTable"] {
   border: var(--sg-outline-card) solid var(--sg-espresso);
@@ -549,48 +646,38 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 }
 
 [data-testid="stTable"] table { font-family: var(--sg-font-sans); font-size: var(--sg-size-table); }
-[data-testid="stTable"] th { background: var(--sg-sand); color: var(--sg-ink-2); font-weight: 600; }
+[data-testid="stTable"] th { background: var(--sg-vellum); color: var(--sg-ink-2); font-weight: 600; }
 [data-testid="stTable"] td { border-color: var(--sg-rule); }
 
-/* Code blocks (hashes, PEM keys). */
 [data-testid="stCode"],
 .stCode pre {
   border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
-  background: var(--sg-sand) !important;
+  background: var(--sg-vellum) !important;
   font-family: var(--sg-font-mono);
   font-size: var(--sg-size-data);
 }
 
-/* Progress bars. */
+/* Progress bars: olive on a vellum track. */
 [data-testid="stProgress"] [role="progressbar"] > div {
   border: 1px solid var(--sg-espresso);
   border-radius: 999px;
-  background: var(--sg-card);
+  background: var(--sg-vellum);
 }
 
 [data-testid="stProgress"] [role="progressbar"] > div > div > div { background: var(--sg-olive); }
 
-/* Plotly charts sit on paper cards. */
+/* Plotly charts sit on cards (dense data: outline, no shadow). */
 [data-testid="stPlotlyChart"] {
   background: var(--sg-card);
   border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   /* WHY no padding: Streamlit sizes this box to the figure's exact height,
-     so padding pushed the axis titles out of view. The figure's own
-     margins (ui/plots.py) provide the breathing room instead. */
+     so padding would push the axis titles out of view. */
   padding: 0;
   overflow: hidden;
 }
 
-/* Charts and iframes inside console panels take the panel colour instead. */
-[class*="st-key-sg-console"] [data-testid="stPlotlyChart"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-/* Graphviz and LaTeX blocks get the same paper card. */
 [data-testid="stGraphVizChart"],
 [data-testid="stMarkdownContainer"] .katex-display {
   background: var(--sg-card);
@@ -600,6 +687,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 }
 
 [data-testid="stIFrame"] { border: none; }
+
+/* Inside a flat card, equations and diagrams need no second box. */
+[class*="st-key-sg-paper"] [data-testid="stGraphVizChart"],
+[class*="st-key-sg-paper"] .katex-display {
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+}
 
 /* ------------------------------------- 7 alerts, toasts, expanders, tabs -- */
 [data-testid="stAlert"],
@@ -618,12 +713,16 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
 [data-testid="stAlert"] p { color: var(--sg-espresso); }
 
+/* Toasts: small case-file cards (outline, olive top edge, mono text). */
 [data-testid="stToast"] {
   background: var(--sg-card);
   color: var(--sg-espresso);
   border: var(--sg-outline-card) solid var(--sg-espresso);
+  border-top: 4px solid var(--sg-olive);
   border-radius: var(--sg-radius-input);
   box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
+  font-family: var(--sg-font-mono);
+  font-size: 13px;
 }
 
 [data-testid="stExpander"] details {
@@ -632,44 +731,50 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   border-radius: var(--sg-radius-input);
 }
 
+/* Expander titles are olive section labels. */
 [data-testid="stExpander"] summary {
   font-family: var(--sg-font-sans);
   font-weight: 600;
-  color: var(--sg-espresso);
+  color: var(--sg-olive);
   border-radius: var(--sg-radius-input);
 }
 
-[data-testid="stExpander"] summary:hover { color: var(--sg-olive); background: var(--sg-sand); }
+[data-testid="stExpander"] summary p { color: var(--sg-olive); font-weight: 600; }
+[data-testid="stExpander"] summary:hover { background: var(--sg-vellum); }
 
-/* Tabs: the selected-tab indicator slides between tabs. */
-[data-baseweb="tab-list"] {
-  gap: 4px;
-  border-bottom: 1px solid var(--sg-rule);
-}
+/* Tabs: the olive indicator slides between tabs. Streamlit 1.66 builds tabs
+   with React Aria; its SelectionIndicator element moves to the selected
+   tab, and the transition on translate/width makes that move a slide. */
+[data-testid="stTabs"] [role="tablist"] { gap: 4px; border-bottom: 1px solid var(--sg-rule); }
 
-[data-baseweb="tab"] {
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
-  color: var(--sg-ink-2);
-  background: transparent;
+[data-testid="stTab"] {
+  padding: 8px 14px;
   border-radius: var(--sg-radius-input) var(--sg-radius-input) 0 0;
-  transition: color var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
+  transition: background var(--sg-dur-hover) var(--sg-ease);
 }
 
-[data-baseweb="tab"]:hover { color: var(--sg-olive); background: var(--sg-card); }
-[data-baseweb="tab"][aria-selected="true"] { color: var(--sg-olive); }
+[data-testid="stTab"] p {
+  font-family: var(--sg-font-sans);
+  font-weight: 500;
+  color: var(--sg-ink-2);
+  transition: color var(--sg-dur-hover) var(--sg-ease);
+}
 
-[data-baseweb="tab-highlight"] {
+[data-testid="stTab"]:hover { background: var(--sg-vellum); }
+[data-testid="stTab"]:hover p,
+[data-testid="stTab"][aria-selected="true"] p { color: var(--sg-olive); }
+[data-testid="stTab"][aria-selected="true"] p { font-weight: 600; }
+
+[data-testid="stTabs"] .react-aria-SelectionIndicator {
   background: var(--sg-olive) !important;
-  height: 3px;
-  border-radius: 3px;
-  transition: transform var(--sg-dur-enter) var(--sg-ease), width var(--sg-dur-enter) var(--sg-ease) !important;
+  height: 2px;
+  transition: translate var(--sg-dur-enter) var(--sg-ease), width var(--sg-dur-enter) var(--sg-ease);
 }
 
-[data-baseweb="tab-border"] { background: transparent; }
-
-/* ----------------------------------------------- 8 SwarmGuard components -- */
+/* ------------------------------------------ 8 Ground Truth components -- */
+/* Cards: card fill, 1.5px espresso outline, 14px radius. */
 .sg-card {
+  position: relative;
   background: var(--sg-card);
   border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
@@ -687,18 +792,32 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 }
 
 .sg-card__title {
-  font-family: var(--sg-font-display);
-  font-weight: 700;
-  font-size: 19px;
-  margin: 10px 0 4px 0;
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 12px 0 4px 0;
 }
 
 .sg-card__body { color: var(--sg-ink-2); margin: 0; font-size: 14px; }
-
 .sg-card__sticker { display: block; }
 
-/* Keyed containers that act as cards (scenario cards hold a real button). */
+/* M2 crosshair corners: registration ticks just outside the corners. */
+.sg-corners::before,
+[class*="st-key-sg-card"]::before,
+[class*="st-key-sg-panel"]::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  background: var(--sg-corners-ink);
+  pointer-events: none;
+}
+
+[class*="st-key-sg-panel"]::before { background: var(--sg-corners-panel); }
+
+/* Keyed containers that act as feature cards (scenario cards hold a button). */
 [class*="st-key-sg-card"] {
+  position: relative;
+  overflow: visible;
   background: var(--sg-card);
   border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
@@ -712,7 +831,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-espresso);
 }
 
-/* Flat paper cards for dense content (equations, diagrams, tables): outline, no shadow. */
+/* Flat cards for dense content (equations, diagrams, text): outline only. */
 [class*="st-key-sg-paper"] {
   background: var(--sg-card);
   border: var(--sg-outline-card) solid var(--sg-espresso);
@@ -720,9 +839,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   padding: 18px 20px;
 }
 
-/* Console panels: dark green-black, used for map, feed and verification. */
-[class*="st-key-sg-console"],
-.sg-console {
+/* Instrument panels: charcoal, 1px char_line border, no shadow. */
+[class*="st-key-sg-panel"],
+.sg-panel {
+  position: relative;
+  overflow: visible;
   background: var(--sg-charcoal);
   color: var(--sg-char-text);
   border: 1px solid var(--sg-char-line);
@@ -730,29 +851,55 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   padding: 18px 20px;
 }
 
-[class*="st-key-sg-console"] p,
-[class*="st-key-sg-console"] label,
-[class*="st-key-sg-console"] [data-testid="stWidgetLabel"] p,
-[class*="st-key-sg-console"] [data-testid="stMarkdownContainer"],
-.sg-console p { color: var(--sg-char-text); }
+[class*="st-key-sg-panel"] p,
+[class*="st-key-sg-panel"] label,
+[class*="st-key-sg-panel"] [data-testid="stWidgetLabel"] p,
+[class*="st-key-sg-panel"] [data-testid="stMarkdownContainer"],
+.sg-panel p { color: var(--sg-char-text); }
 
-[class*="st-key-sg-console"] [data-testid="stCaptionContainer"],
-[class*="st-key-sg-console"] small { color: var(--sg-char-mute); }
+[class*="st-key-sg-panel"] [data-testid="stCaptionContainer"],
+[class*="st-key-sg-panel"] small { color: var(--sg-char-mute); }
 
-/* Widgets inside console panels keep their tactile look but on the dark panel. */
-[class*="st-key-sg-console"] [data-testid="stSlider"] [role="group"] > div > div[data-rac],
-[class*="st-key-sg-console"] [data-testid="stSlider"] [role="slider"] {
+[class*="st-key-sg-panel"] [data-testid="stPlotlyChart"] {
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+}
+
+[class*="st-key-sg-panel"] [data-testid="stSlider"] [role="group"] > div > div[data-rac],
+[class*="st-key-sg-panel"] [data-testid="stSlider"] [role="slider"] {
   background: var(--sg-amber);
   border-color: var(--sg-char-text);
   box-shadow: none;
 }
 
-[class*="st-key-sg-console"] [data-testid="stSliderThumbValue"] { color: var(--sg-amber); }
-[class*="st-key-sg-console"] [data-testid="stSliderTickBar"] { color: var(--sg-char-mute); }
+[class*="st-key-sg-panel"] [data-testid="stSliderThumbValue"] { color: var(--sg-amber); }
+[class*="st-key-sg-panel"] [data-testid="stSliderTickBar"] { color: var(--sg-char-mute); }
+[class*="st-key-sg-panel"] [data-testid="stCheckbox"] p { color: var(--sg-char-text); }
 
-[class*="st-key-sg-console"] [data-testid="stCheckbox"] p { color: var(--sg-char-text); }
+/* The camera control inside a panel. */
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button {
+  background: var(--sg-charcoal-2);
+  color: var(--sg-char-mute);
+  border-color: var(--sg-char-line);
+}
 
-.sg-console__head {
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button:hover { color: var(--sg-char-text); }
+
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button p { color: var(--sg-char-mute); }
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button:hover p { color: var(--sg-char-text); }
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button[aria-checked="true"] p {
+  color: var(--sg-espresso);
+  font-weight: 600;
+}
+
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button[data-testid$="Active"],
+[class*="st-key-sg-panel"] [data-testid="stButtonGroup"] button[aria-checked="true"] {
+  background: var(--sg-sage);
+  color: var(--sg-espresso);
+}
+
+.sg-panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -760,31 +907,28 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   margin-bottom: 12px;
 }
 
-.sg-console__title {
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+.sg-panel__title {
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--sg-char-mute);
   margin: 0;
 }
 
-.sg-console__live {
+.sg-panel__live {
   font-family: var(--sg-font-mono);
   font-size: 11px;
   color: var(--sg-amber);
   border: 1px solid var(--sg-char-line);
   border-radius: 999px;
   padding: 2px 9px;
+  white-space: nowrap;
 }
 
-/* KPI cards: Bricolage numerals with count-up and a thin status bar. */
-.sg-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
+/* KPI cards: Plex Mono numerals with count-up and a thin status bar. */
+.sg-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
 
 .sg-kpi {
   position: relative;
@@ -796,20 +940,20 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 }
 
 .sg-kpi__label {
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
   font-size: var(--sg-size-eyebrow);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--sg-stone-text);
   margin: 0;
 }
 
 .sg-kpi__value {
-  font-family: var(--sg-font-display);
-  font-weight: 800;
-  font-size: 40px;
-  line-height: 1.05;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
+  font-size: var(--sg-size-kpi);
+  line-height: 1.1;
   margin: 8px 0 2px 0;
   color: var(--sg-espresso);
   font-variant-numeric: tabular-nums;
@@ -817,29 +961,15 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
 .sg-kpi__delta { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-ink-2); margin: 0; }
 
-.sg-kpi__bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 5px;
-  background: var(--sg-rule);
-}
-
+.sg-kpi__bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--sg-rule); }
 .sg-kpi--normal .sg-kpi__bar { background: var(--sg-status-normal); }
 .sg-kpi--suspicious .sg-kpi__bar { background: var(--sg-status-suspicious); }
 .sg-kpi--alarm .sg-kpi__bar { background: var(--sg-status-alarm); }
 .sg-kpi--none .sg-kpi__bar { background: var(--sg-status-no-evidence); }
 
 /* Count-up: an integer custom property animated from 0, shown via a CSS
-   counter. Browsers without @property skip the animation and show the
-   final number straight away. */
-@property --sg-num {
-  syntax: "<integer>";
-  inherits: false;
-  initial-value: 0;
-}
-
+   counter. Browsers without @property show the final number at once. */
+@property --sg-num { syntax: "<integer>"; inherits: false; initial-value: 0; }
 @keyframes sg-count { from { --sg-num: 0; } }
 
 .sg-count {
@@ -850,22 +980,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
 .sg-count::after { content: counter(sg-count); }
 
-/* Status pills: ink text on a tinted fill, status colour on border and dot.
-   (Status colours are too light to be readable as text: see core/palette.py.) */
+/* Pills: Plex Mono 11px uppercase, 1px espresso outline, tinted fill,
+   status colour on the dot. Status is ALWAYS text plus colour. */
 .sg-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--sg-espresso);
-  border: 1.5px solid var(--sg-pill-colour, var(--sg-status-no-evidence));
-  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 16%, var(--sg-card));
+  border: 1px solid var(--sg-espresso);
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 20%, var(--sg-card));
   border-radius: 999px;
-  padding: 3px 10px 3px 8px;
+  padding: 2px 10px 2px 8px;
   white-space: nowrap;
 }
 
@@ -885,17 +1015,20 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 .sg-pill--det-b { --sg-pill-colour: var(--sg-det-b); }
 .sg-pill--det-c { --sg-pill-colour: var(--sg-det-c); }
 .sg-pill--det-d { --sg-pill-colour: var(--sg-det-d); }
-.sg-pill--brand { --sg-pill-colour: var(--sg-olive); }
+.sg-pill--brand { --sg-pill-colour: var(--sg-olive); background: var(--sg-sage); }
 
-/* Pills inside console panels: light text on a dark tint. */
-.sg-console .sg-pill,
-[class*="st-key-sg-console"] .sg-pill {
+.sg-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+
+/* Pills inside panels: light text on a dark tint. */
+.sg-panel .sg-pill,
+[class*="st-key-sg-panel"] .sg-pill {
   color: var(--sg-char-text);
-  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 22%, var(--sg-charcoal));
+  border-color: var(--sg-char-line);
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 24%, var(--sg-charcoal));
 }
 
-/* Event feed (inside a console panel). */
-.sg-feed { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+/* Event feed (inside a panel). */
+.sg-feed { list-style: none; margin: 0 !important; padding: 0 !important; max-height: 420px; overflow-y: auto; }
 
 .sg-feed__row {
   display: grid;
@@ -903,7 +1036,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   align-items: start;
   gap: 10px;
   padding: 9px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both;
 }
 
@@ -914,30 +1047,21 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 .sg-feed__row:nth-child(n+5) { animation-delay: 160ms; }
 
 .sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-char-mute); white-space: nowrap; }
-
-.sg-feed__dot {
-  width: 9px;
-  height: 9px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: var(--sg-status-no-evidence);
-}
-
+.sg-feed__dot { width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--sg-status-no-evidence); }
 .sg-feed__dot--normal { background: var(--sg-status-normal); }
 .sg-feed__dot--suspicious { background: var(--sg-status-suspicious); }
 .sg-feed__dot--alarm { background: var(--sg-status-alarm); }
-
 .sg-feed__text { font-size: 14px; color: var(--sg-char-text); margin: 0; }
 .sg-feed__meta { font-family: var(--sg-font-mono); font-size: 11px; color: var(--sg-char-mute); margin: 0; }
 
-/* Ribbon: a black band with detection events scrolling past. */
+/* Event ribbon: an espresso band with detection events scrolling past. */
 .sg-ribbon {
   position: relative;
   overflow: hidden;
   background: var(--sg-espresso);
-  color: var(--sg-card);
-  border-radius: 999px;
-  padding: 10px 0;
+  color: var(--sg-sand);
+  border-radius: 6px;
+  padding: 9px 0;
   white-space: nowrap;
 }
 
@@ -946,19 +1070,44 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   gap: 40px;
   padding-left: 40px;
   animation: sg-ribbon var(--sg-ribbon-duration, 60s) linear infinite;
-  font-family: var(--sg-font-sans);
-  font-size: 14px;
+  font-family: var(--sg-font-mono);
+  font-size: 12px;
 }
 
-.sg-ribbon__item b { font-weight: 600; }
-.sg-ribbon__sep { color: var(--sg-stone-text); }
+.sg-ribbon__item b { font-weight: 500; color: var(--sg-amber); }
+.sg-ribbon__sep { color: var(--sg-char-mute); }
 
-@keyframes sg-ribbon {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+@keyframes sg-ribbon { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* M5 hash ribbon: real manifest hashes; pauses on hover. */
+.sg-hashribbon {
+  position: relative;
+  overflow: hidden;
+  background: var(--sg-espresso);
+  color: var(--sg-sand);
+  border-radius: 4px;
+  padding: 8px 0;
+  white-space: nowrap;
+  margin: 16px 0;
 }
 
-/* Pattern banner: outlined, with a red bar (only used when fusion alarms). */
+.sg-hashribbon--slim { padding: 4px 0; margin: 8px 0; }
+
+.sg-hashribbon__track {
+  display: inline-flex;
+  gap: 14px;
+  padding-left: 14px;
+  animation: sg-ribbon var(--sg-ribbon-duration, 60s) linear infinite;
+  font-family: var(--sg-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sg-hashribbon:hover .sg-hashribbon__track { animation-play-state: paused; }
+.sg-hashribbon__item b { font-weight: 500; color: var(--sg-amber); }
+.sg-hashribbon__sep { color: var(--sg-char-mute); }
+
+/* Pattern banner: a card with a brick (alarm) or amber (note) left bar. */
 .sg-banner {
   display: flex;
   gap: 14px;
@@ -968,21 +1117,56 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   border-left: 8px solid var(--sg-status-alarm);
   border-radius: var(--sg-radius-input);
   padding: 14px 18px;
-  margin: 8px 0 24px 0;
+  margin: 16px 0 24px 0;
 }
 
-.sg-banner--info { border-left-color: var(--sg-olive); }
-.sg-banner__title { font-family: var(--sg-font-display); font-weight: 700; font-size: 17px; margin: 0; }
+.sg-banner--info { border-left-color: var(--sg-amber); }
+.sg-banner__title { font-family: var(--sg-font-sans); font-weight: 600; font-size: 16px; margin: 0; }
 .sg-banner__body { color: var(--sg-ink-2); margin: 2px 0 0 0; font-size: 14px; }
 
-/* Drone inspector: an outlined "properties" card. */
-.sg-inspector {
+/* M6 case files: a folder tab on the top edge holding the case number. */
+.sg-case {
+  position: relative;
+  margin-top: 20px;
   background: var(--sg-card);
   border: var(--sg-outline-card) solid var(--sg-espresso);
-  border-radius: var(--sg-radius-card);
+  border-radius: 0 var(--sg-radius-card) var(--sg-radius-card) var(--sg-radius-card);
   padding: 18px 20px;
 }
 
+.sg-case__tab {
+  position: absolute;
+  top: -21px;
+  left: -1.5px;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-espresso);
+  background: var(--sg-vellum);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  padding: 2px 14px 1px 14px;
+  line-height: 18px;
+}
+
+.sg-case__meta {
+  font-family: var(--sg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-stone-text);
+  margin: 0;
+}
+
+.sg-case__title { font-family: var(--sg-font-serif); font-weight: 500; font-size: 22px; margin: 6px 0 2px 0; }
+.sg-case__detail { color: var(--sg-ink-2); font-size: 14px; margin: 0; }
+.sg-case__stamp { position: absolute; right: 18px; top: 14px; }
+.sg-case--card { min-height: 150px; padding-right: 230px; }
+
+/* Drone inspector as a case-file side card. */
 .sg-inspector__head {
   display: flex;
   justify-content: space-between;
@@ -992,10 +1176,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   border-bottom: 1px solid var(--sg-rule);
 }
 
-.sg-inspector__name { font-family: var(--sg-font-display); font-weight: 800; font-size: 22px; margin: 0; }
+.sg-inspector__name { font-family: var(--sg-font-serif); font-weight: 500; font-size: 24px; margin: 0; }
 
 .sg-props { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
-.sg-props th { text-align: left; font-weight: 600; color: var(--sg-ink-2); padding: 7px 8px 7px 0; }
+.sg-props th { text-align: left; font-weight: 500; color: var(--sg-ink-2); padding: 7px 8px 7px 0; }
 .sg-props td { padding: 7px 0; border-top: 1px solid var(--sg-rule); }
 .sg-props tr:first-child td, .sg-props tr:first-child th { border-top: none; }
 .sg-props .sg-num { font-family: var(--sg-font-mono); font-size: var(--sg-size-data); text-align: right; }
@@ -1006,36 +1190,124 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 .sg-action {
   margin-top: 12px;
   padding: 10px 12px;
-  background: var(--sg-sand);
-  border: 1px solid var(--sg-rule);
-  border-radius: 10px;
+  background: var(--sg-sage);
+  border: 1px solid var(--sg-olive);
+  border-radius: 8px;
   font-size: 14px;
 }
 
-/* Empty state: sticker + one sentence + one button. */
-.sg-empty {
+/* M8 survey-mark divider: rule, crosshair, rule, "§ 03 · 18.5204°N". */
+.sg-survey {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
   gap: 10px;
-  padding: 40px 20px 12px 20px;
+  margin: var(--sg-section-gap) 0 8px 0;
 }
 
+.sg-survey__rule { flex: 1; height: 1px; background: var(--sg-stone); }
+
+.sg-survey__mark {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--sg-espresso);
+  border-radius: 50%;
+  flex: none;
+}
+
+.sg-survey__mark::before,
+.sg-survey__mark::after {
+  content: "";
+  position: absolute;
+  background: var(--sg-espresso);
+}
+
+.sg-survey__mark::before { left: 50%; top: -5px; bottom: -5px; width: 1px; transform: translateX(-50%); }
+.sg-survey__mark::after { top: 50%; left: -5px; right: -5px; height: 1px; transform: translateY(-50%); }
+
+.sg-survey__label {
+  font-family: var(--sg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--sg-stone-text);
+  white-space: nowrap;
+}
+
+/* Custody chain: vertical timeline with survey-mark nodes. */
+.sg-timeline { list-style: none; margin: 0; padding: 4px 0 0 0; position: relative; }
+
+.sg-timeline::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--sg-stone);
+}
+
+.sg-timeline__item { position: relative; display: grid; grid-template-columns: 15px 1fr; gap: 14px; padding: 6px 0 10px 0; }
+
+.sg-timeline__node {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+  background: var(--sg-card);
+  border: 1.5px solid var(--sg-espresso);
+  border-radius: 50%;
+}
+
+.sg-timeline__node::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--sg-olive);
+}
+
+.sg-timeline__head { margin: 0; font-size: 14px; display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.sg-timeline__head b { font-family: var(--sg-font-mono); font-weight: 500; font-size: 12px; letter-spacing: 0.06em; }
+.sg-timeline__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-stone-text); }
+
+/* Empty state: illustration + one sentence + one button. */
+.sg-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 20px 12px 20px; }
 .sg-empty__text { color: var(--sg-ink-2); max-width: 460px; margin: 0; }
 
+/* Legend with survey-style symbols (dot, diamond, ring, line). */
+.sg-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--sg-ink-2); margin-top: 12px; }
+.sg-legend__swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; border: 1px solid var(--sg-espresso); }
+.sg-legend__swatch--diamond { border-radius: 1px; transform: rotate(45deg) scale(0.85); background: transparent !important; border: 1.5px solid var(--sg-espresso); }
+.sg-legend__swatch--ring { background: transparent !important; border: 1.5px solid var(--sg-espresso); }
+.sg-legend__swatch--line { height: 2px; width: 16px; border: none; border-radius: 0; vertical-align: 3px; }
+
 /* Small helpers. */
-.sg-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--sg-ink-2); }
-.sg-legend__swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--sg-espresso); }
 .sg-equation-note { color: var(--sg-ink-2); font-size: 14px; margin-top: 8px; }
+.sg-margin-note {
+  font-size: 13px;
+  color: var(--sg-stone-text);
+  border-left: 2px solid var(--sg-stone);
+  padding-left: 10px;
+  margin: 8px 0 0 0;
+}
 .sg-hash { font-family: var(--sg-font-mono); font-size: 12px; word-break: break-all; color: var(--sg-ink-2); }
+.sg-stats { font-family: var(--sg-font-mono); font-size: 12px; letter-spacing: 0.04em; color: var(--sg-stone-text); margin: 10px 0 0 0; }
+.sg-case-head { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.sg-spacer-label { height: 28px; }      /* lines a button up with labelled inputs beside it */
 
-/* -------------------------------------------------- 9 verification motion -- */
+/* Methodology reads like a textbook: Fraunces section titles. */
+[class*="st-key-sg-textbook"] .sg-section__title {
+  font-family: var(--sg-font-serif);
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-size: 28px;
+}
+
+/* ------------------------------------- 9 verification, stamps, motion -- */
 .sg-verify { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 14px; }
-
 .sg-verify td { padding: 8px 10px; color: var(--sg-char-text); background: var(--sg-charcoal-2); }
-.sg-verify td:first-child { border-radius: 10px 0 0 10px; width: 40px; }
-.sg-verify td:last-child { border-radius: 0 10px 10px 0; }
+.sg-verify td:first-child { border-radius: 8px 0 0 8px; width: 40px; }
+.sg-verify td:last-child { border-radius: 0 8px 8px 0; }
 .sg-verify .sg-verify__name { font-family: var(--sg-font-mono); font-size: 13px; }
 .sg-verify .sg-verify__detail { color: var(--sg-char-mute); font-size: 13px; }
 
@@ -1044,11 +1316,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
    images; the page CSS can still animate how much of the image is shown. */
 .sg-icon { display: block; }
 
-.sg-check {
-  clip-path: inset(0 100% 0 0);
-  animation: sg-draw var(--sg-dur-draw) var(--sg-ease) forwards;
-}
-
+.sg-check { clip-path: inset(0 100% 0 0); animation: sg-draw var(--sg-dur-draw) var(--sg-ease) forwards; }
 .sg-verify tr:nth-child(2) .sg-check { animation-delay: 60ms; }
 .sg-verify tr:nth-child(3) .sg-check { animation-delay: 120ms; }
 .sg-verify tr:nth-child(4) .sg-check { animation-delay: 180ms; }
@@ -1056,9 +1324,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
 @keyframes sg-draw { to { clip-path: inset(0 0 0 0); } }
 
-/* FAIL: the row shakes once and turns red-tinted. */
+/* FAIL: the row shakes once (240 ms) and takes a brick tint. */
 .sg-verify tr.sg-verify--fail td {
-  background: color-mix(in srgb, var(--sg-status-alarm) 28%, var(--sg-charcoal));
+  background: color-mix(in srgb, var(--sg-status-alarm) 30%, var(--sg-charcoal));
   animation: sg-shake var(--sg-dur-enter) var(--sg-ease) 1;
 }
 
@@ -1070,6 +1338,28 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
   80% { transform: translateX(4px); }
 }
 
+/* M7 stamps land after the rows: scale 1.6 -> 1, rotate to -8deg,
+   opacity 0 -> 1 with a slight overshoot; the panel nudges 1px ("thud"). */
+.sg-stamp-slot { display: flex; justify-content: flex-end; padding: 10px 6px 2px 0; }
+
+.sg-stamp {
+  display: block;
+  transform: rotate(-8deg);
+  animation: sg-stamp var(--sg-dur-stamp) var(--sg-ease) 620ms both;
+}
+
+.sg-stamp-slot .sg-stamp { background: var(--sg-card); border-radius: 12px; padding: 2px; }
+
+@keyframes sg-stamp {
+  0%   { opacity: 0; transform: scale(1.6) rotate(-14deg); }
+  70%  { opacity: 1; transform: scale(0.96) rotate(-7deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+[class*="st-key-sg-panel"]:has(.sg-stamp) { animation: sg-thud 160ms var(--sg-ease) 820ms 1; }
+
+@keyframes sg-thud { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+
 .sg-byte {
   font-family: var(--sg-font-mono);
   background: color-mix(in srgb, var(--sg-status-alarm) 18%, var(--sg-card));
@@ -1079,19 +1369,33 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 }
 
 /* ------------------------------------------- 10 responsive + reduced motion -- */
+@media (max-width: 1280px) {
+  .sg-topbar .sg-scenario-tag { display: none; }
+  [data-testid="stTopNav"] { left: 180px; }
+}
+
+@media (max-width: 1100px) {
+  .sg-readout { display: none; }
+}
+
 @media (max-width: 900px) {
-  [data-testid="stMainBlockContainer"] { padding: 88px 16px 56px 16px; }
-  .sg-page-title { font-size: 32px; }
-  .sg-kpi__value { font-size: 32px; }
-  [data-testid="stTopNav"] { border-radius: var(--sg-radius-card); }
+  [data-testid="stMainBlockContainer"] { padding: calc(var(--sg-navbar-height) + 28px) 16px 56px 16px; }
+  .sg-page-title { font-size: 30px; }
+  .sg-kpi__value { font-size: 28px; }
   .sg-feed__row { grid-template-columns: 80px 12px 1fr; }
+  /* Streamlit swaps the top links for a menu button on the left; keep the
+     wordmark clear of it. */
+  .sg-topbar { padding-left: 64px; padding-right: 16px; }
+  .sg-case--card { padding-right: 20px; }
+  .sg-case__stamp { position: static; margin-top: 12px; }
 }
 
 @media (max-width: 640px) {
   [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
   [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { min-width: 100% !important; }
   .sg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sg-topbar { gap: 8px; }
+  .sg-topbar .sg-pill { display: none; }
+  .sg-wordmark__text { font-size: 13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1101,12 +1405,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
     animation-iteration-count: 1 !important;
     transition-duration: 0ms !important;
   }
+  /* The clock is information, not decoration: it keeps ticking. */
+  .sg-clock__h { animation-duration: 86400s !important; animation-iteration-count: infinite !important; }
+  .sg-clock__m { animation-duration: 3600s !important; animation-iteration-count: infinite !important; }
+  .sg-clock__s { animation-duration: 60s !important; animation-iteration-count: infinite !important; }
+  .sg-clock__h, .sg-clock__m, .sg-clock__s { animation-delay: var(--sg-delay, 0s) !important; }
   .stButton > button:hover,
   .stButton > button:active,
   .stDownloadButton > button:hover,
   .stDownloadButton > button:active,
   .sg-card--feature:hover,
   [class*="st-key-sg-card"]:hover { transform: none; }
-  .sg-ribbon__track { animation: none; }
+  .sg-ribbon__track, .sg-hashribbon__track { animation: none; }
   .sg-check { clip-path: none; }
+  .sg-stamp { opacity: 1; transform: rotate(-8deg); }
 }

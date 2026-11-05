@@ -7,251 +7,227 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="__FONTS_URL__">
-<style>
-/* Colours and tokens are generated from core/palette.py (no hex values here). */
-/*SG_VARS*/
+<!--
+  SwarmGuard Home hero ("Ground Truth", docs/phases/phase-7.md B8).
+  ui/hero.py fills the placeholders and inserts the palette as CSS
+  variables, so this file contains no colour values of its own.
 
+  Left column: eyebrow, Fraunces headline, subtitle.
+  Right column: an amber radar scope in a charcoal instrument panel with
+  crosshair corners. A sweep turns once every 8 s and the ten drone blips
+  brighten as it passes. Every 10 s one blip splits into its TRUE position
+  (filled dot) and its SPOOFED GPS position (hollow dot) joined by a growing
+  dashed line; an "ALARM · motion check" label appears, holds and fades, the
+  NIS readout jumps from 2.1 to 48.6, and the blip rejoins.
+  Motion: CSS for the sweep and blips, SVG SMIL for the spoof event (so its
+  parts stay in step). Under prefers-reduced-motion everything is paused.
+-->
+<style>
+/*SG_VARS*/
+* { box-sizing: border-box; }
 html, body {
   margin: 0;
-  padding: 0;
   background: transparent;
   color: var(--sg-espresso);
   font-family: var(--sg-font-sans);
-  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-.hero { position: relative; height: 100vh; min-height: 600px; overflow: hidden; }
-
-/* Background art: a curved flight path with telemetry flowing along it. */
-.art { position: absolute; inset: 0; width: 100%; height: 100%; }
-.flight { fill: none; stroke: var(--sg-espresso); stroke-opacity: 0.25; stroke-width: 1; }
-.orbit { fill: none; stroke: var(--sg-espresso); stroke-opacity: 0.14; stroke-width: 1; stroke-dasharray: 2 7; }
-.telemetry { font-family: var(--sg-font-mono); font-size: 13px; fill: var(--sg-ink-2); fill-opacity: 0.8; letter-spacing: 0.02em; }
-.drone-body { fill: var(--sg-card); stroke: var(--sg-espresso); stroke-width: 2; }
-.drone-rotor { fill: var(--sg-brass); stroke: var(--sg-espresso); stroke-width: 2; }
-.drone-arm { stroke: var(--sg-espresso); stroke-width: 2; }
-.gnss { fill: var(--sg-card); stroke: var(--sg-espresso); stroke-width: 1.5; }
-
-/* Copy. */
-.content {
+/* M3 coordinate rulers along the top and left edges. */
+.frame {
   position: relative;
-  z-index: 2;
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 64px 24px 0 24px;
-  text-align: center;
+  padding: 30px 8px 8px 74px;
+  height: 100vh;
+  min-height: 520px;
 }
+.ruler { position: absolute; font-family: var(--sg-font-mono); font-size: 10px; color: var(--sg-stone-text); }
+.ruler--top { left: 74px; right: 8px; top: 0; height: 24px; border-bottom: 1px solid var(--sg-espresso); }
+.ruler--left { top: 30px; bottom: 8px; left: 0; width: 66px; border-right: 1px solid var(--sg-espresso); }
+.tick { position: absolute; background: var(--sg-espresso); }
+.ruler--top .tick { bottom: 0; width: 1px; height: 5px; }
+.ruler--top .tick.major { height: 10px; }
+.ruler--left .tick { right: 0; height: 1px; width: 5px; }
+.ruler--left .tick.major { width: 10px; }
+.label { position: absolute; white-space: nowrap; letter-spacing: 0.02em; }
+.ruler--top .label { top: 2px; transform: translateX(-50%); }
+.ruler--left .label { right: 13px; transform: translateY(-50%); }
+.ruler--top .label.first { transform: none; }
+.ruler--top .label.last { transform: translateX(-100%); }
+.ruler--left .label.first { transform: translateY(-100%); }
+.ruler--left .label.last { transform: none; }
 
+/* Two columns inside the rulers. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  height: 100%;
+  padding: 18px 8px 8px 28px;
+}
 .eyebrow {
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-family: var(--sg-font-mono);
+  font-weight: 500;
+  font-size: var(--sg-size-eyebrow);
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--sg-stone-text);
-  margin: 0;
+  margin: 0 0 18px 0;
 }
-
 h1 {
   font-family: var(--sg-font-serif);
-  font-weight: 400;
-  font-size: 64px;
-  line-height: 1.02;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-size: var(--sg-size-hero);
+  line-height: 1.05;
   letter-spacing: -0.01em;
-  margin: 18px 0 0 0;
+  margin: 0;
 }
-
 h1 em { display: block; font-style: italic; color: var(--sg-olive); }
-
-.sub {
-  font-size: 17px;
-  line-height: 1.6;
-  color: var(--sg-ink-2);
-  max-width: 560px;
-  margin: 18px auto 0 auto;
-}
-
-.cta-row { display: flex; gap: 22px; justify-content: center; align-items: center; margin-top: 30px; }
-
-.cta {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  display: inline-block;
-  font-family: var(--sg-font-sans);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--sg-espresso);
-  text-decoration: none;
-  background: var(--sg-brass);
-  border: var(--sg-outline-button) solid var(--sg-espresso);
-  border-radius: var(--sg-radius-button);
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
-  padding: 12px 24px;
-  transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
-}
-
-.cta:hover { background: var(--sg-brass-2); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--sg-espresso); }
-.cta:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--sg-espresso); transition-duration: var(--sg-dur-press); }
-.cta:focus-visible { outline: 2px solid var(--sg-olive); outline-offset: 3px; }
-
-.link {
-  font-weight: 600;
-  color: var(--sg-olive);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.link:hover { color: var(--sg-olive-2); }
-
-/* Waveform pill: bars move like a live NIS signal; one bar spikes red now and then. */
-.wave {
-  display: inline-flex;
+.subtitle { font-size: 17px; line-height: 1.6; color: var(--sg-ink-2); max-width: 470px; margin: 22px 0 0 0; }
+.coords {
+  font-family: var(--sg-font-mono);
+  font-size: 12px;
+  color: var(--sg-stone-text);
+  margin: 26px 0 0 0;
+  display: flex;
+  gap: 10px;
   align-items: center;
-  gap: 4px;
-  height: 46px;
-  margin-top: 30px;
-  padding: 0 18px 0 14px;
-  background: var(--sg-card);
-  border: 2.5px solid var(--sg-espresso);
-  border-radius: 999px;
 }
+.coords::before { content: ""; width: 28px; height: 1px; background: var(--sg-espresso); }
 
-.wave__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sg-olive); margin-right: 8px; }
-.wave__label { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-ink-2); margin-left: 10px; }
-
-.bar {
-  width: 4px;
-  height: 22px;
-  border-radius: 2px;
-  background: var(--sg-espresso);
-  transform-origin: center;
-  animation: wave 1.6s var(--sg-ease) infinite alternate;
-  animation-delay: calc(var(--i) * -0.17s);
+/* The instrument panel with M2 crosshair corners. */
+.panel {
+  position: relative;
+  background: var(--sg-charcoal);
+  border: 1px solid var(--sg-char-line);
+  border-radius: var(--sg-radius-card);
+  padding: 14px;
+  aspect-ratio: 1 / 1;
+  max-height: calc(100vh - 70px);
+  justify-self: center;
+  width: 100%;
+  max-width: 480px;
 }
-
-.bar--spike { animation: spike 7s var(--sg-ease) infinite; }
-
-@keyframes wave {
-  0%   { transform: scaleY(0.25); }
-  50%  { transform: scaleY(0.6); }
-  100% { transform: scaleY(0.95); }
-}
-
-@keyframes spike {
-  0%, 62%, 82%, 100% { transform: scaleY(0.4); background: var(--sg-espresso); }
-  68%, 76%           { transform: scaleY(1.9); background: var(--sg-status-alarm); }
-}
-
-/* Black ribbon of detection events crossing the bottom at a slight angle. */
-.ribbon {
+.panel::before {
+  content: "";
   position: absolute;
-  z-index: 1;
-  left: -6%;
-  width: 112%;
-  bottom: 38px;
-  transform: rotate(-2.2deg);
-  background: var(--sg-espresso);
-  color: var(--sg-card);
-  padding: 12px 0;
-  overflow: hidden;
-  white-space: nowrap;
+  inset: -7px;
+  background: var(--sg-corners-ink);
+  pointer-events: none;
+}
+.panel__head {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--sg-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-char-mute);
+}
+.panel__head b { color: var(--sg-amber); font-weight: 500; }
+svg.scope { width: 100%; height: 100%; display: block; overflow: visible; }
+
+.ring { fill: none; stroke: var(--sg-char-line); stroke-width: 1; }
+.axis { stroke: var(--sg-char-line); stroke-width: 1; stroke-dasharray: 2 4; }
+.bearing { stroke: var(--sg-char-mute); stroke-width: 1; }
+.bearing-label { fill: var(--sg-char-mute); font-family: var(--sg-font-mono); font-size: 9px; text-anchor: middle; }
+
+/* The sweep: three flat wedges of falling opacity (no gradient) and a
+   bright leading line, turning once every 8 s. */
+.sweep { animation: sweep 8s linear infinite; transform-origin: 0 0; }
+.wedge { fill: var(--sg-amber); }
+.lead { stroke: var(--sg-amber); stroke-width: 1.5; }
+@keyframes sweep { to { transform: rotate(360deg); } }
+
+/* Blips brighten as the sweep passes (delay set per blip from its bearing). */
+.blip {
+  fill: var(--sg-amber);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blip 8s linear infinite;
+}
+@keyframes blip {
+  0%   { opacity: 1; transform: scale(1.45); }
+  12%  { opacity: 0.75; transform: scale(1); }
+  100% { opacity: 0.32; transform: scale(1); }
 }
 
-.track {
-  display: inline-flex;
-  gap: 44px;
-  padding-left: 44px;
-  font-size: 14px;
-  animation: ribbon 70s linear infinite;
+.true-dot { fill: var(--sg-amber); }
+.spoof-dot { fill: none; stroke: var(--sg-char-text); stroke-width: 1.5; }
+.spoof-line { stroke: var(--sg-char-text); stroke-width: 1; stroke-dasharray: 3 3; }
+.alarm-pill { fill: var(--sg-status-alarm); }
+.alarm-text { fill: var(--sg-sand); font-family: var(--sg-font-mono); font-size: 10px; letter-spacing: 0.04em; }
+.readout { fill: var(--sg-char-mute); font-family: var(--sg-font-mono); font-size: 10px; }
+.readout b, .readout .hot { fill: var(--sg-amber); }
+.centre-label { fill: var(--sg-char-mute); font-family: var(--sg-font-mono); font-size: 9px; }
+
+@media (max-width: 760px) {
+  .frame { padding: 26px 4px 4px 4px; }
+  .ruler--left { display: none; }
+  .ruler--top { left: 4px; right: 4px; }
+  .hero { grid-template-columns: 1fr; gap: 18px; padding: 14px 6px 6px 6px; align-content: start; }
+  h1 { font-size: var(--sg-size-hero-small); }
+  .subtitle { font-size: 15px; margin-top: 14px; }
+  .coords { display: none; }
+  .panel { max-width: 300px; max-height: none; }
 }
 
-.track b { font-weight: 600; }
-.track .sep { color: var(--sg-stone-text); }
-
-@keyframes ribbon { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-
-@media (max-width: 900px) {
-  h1 { font-size: 40px; }
-  .sub { font-size: 15px; }
-  .content { padding-top: 40px; }
-  .cta-row { flex-direction: column; gap: 14px; }
-  .ribbon { bottom: 22px; }
-}
-
-/* Calm by default, still under reduced motion (SVG motion is paused in the script). */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .bar { transform: scaleY(0.5); }
+  .sweep, .blip { animation: none; }
+  .blip { opacity: 0.8; }
 }
 </style>
 </head>
 <body>
-<div class="hero">
-  <svg class="art" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <path id="flight" class="flight" d="M -60 520 C 160 380, 360 640, 600 500 S 1000 330, 1260 450"/>
-    <path class="orbit" d="M 760 40 C 900 -10, 1120 40, 1180 140"/>
-    <path class="orbit" d="M 20 150 C 80 60, 240 20, 380 40"/>
-    <g transform="translate(1012 70)"><rect class="gnss" x="-7" y="-7" width="14" height="14" rx="2"/></g>
-    <g transform="translate(140 76)"><circle class="gnss" r="6"/></g>
-    <g transform="translate(330 38)"><circle class="gnss" r="4.5"/></g>
-    <text class="telemetry">
-      <textPath href="#flight" startOffset="100%">__TELEMETRY__
-        <animate attributeName="startOffset" from="100%" to="-140%" dur="90s" repeatCount="indefinite"/>
-      </textPath>
-    </text>
-    <g>
-      <animateMotion dur="34s" repeatCount="indefinite" rotate="auto">
-        <mpath href="#flight"/>
-      </animateMotion>
-      <g transform="translate(0 -20) scale(0.55)">
-        <line class="drone-arm" x1="-16" y1="-16" x2="16" y2="16"/>
-        <line class="drone-arm" x1="16" y1="-16" x2="-16" y2="16"/>
-        <circle class="drone-rotor" cx="-16" cy="-16" r="9"/>
-        <circle class="drone-rotor" cx="16" cy="-16" r="9"/>
-        <circle class="drone-rotor" cx="-16" cy="16" r="9"/>
-        <circle class="drone-rotor" cx="16" cy="16" r="9"/>
-        <rect class="drone-body" x="-8" y="-8" width="16" height="16" rx="4"/>
-      </g>
-    </g>
-  </svg>
-
-  <div class="content">
-    <p class="eyebrow">__EYEBROW__</p>
-    <h1>__HEADLINE_1__<em>__HEADLINE_2__</em></h1>
-    <p class="sub">__SUBTITLE__</p>
-    <div class="cta-row">
-      <a id="cta" class="cta" href="#sg-quickstart">Run a scenario</a>
-      <a id="how" class="link" href="#sg-how">How it works</a>
+<div class="frame">
+  <div class="ruler ruler--top" aria-hidden="true">__RULER_TOP__</div>
+  <div class="ruler ruler--left" aria-hidden="true">__RULER_LEFT__</div>
+  <div class="hero">
+    <div>
+      <p class="eyebrow">__EYEBROW__</p>
+      <h1>__HEADLINE_1__ <em>__HEADLINE_2__</em></h1>
+      <p class="subtitle">__SUBTITLE__</p>
+      <p class="coords">ORIGIN 18.5204°N 73.8567°E · PUNE · LOCAL EAST-NORTH FRAME (m)</p>
     </div>
-    <div class="wave" aria-hidden="true">
-      <span class="wave__dot"></span>
-      __BARS__
-      <span class="wave__label">NIS</span>
+    <div class="panel" role="img" aria-label="Animated radar scope: a drone's reported GPS position separates from its true position and a motion-check alarm appears.">
+      <div class="panel__head"><span>Scope · 10 drones</span><b>simulation</b></div>
+      <svg class="scope" viewBox="-200 -200 400 400" aria-hidden="true">
+        <circle class="ring" r="60"/><circle class="ring" r="120"/><circle class="ring" r="180"/>
+        <line class="axis" x1="-180" y1="0" x2="180" y2="0"/>
+        <line class="axis" x1="0" y1="-180" x2="0" y2="180"/>
+        __BEARINGS__
+        <g class="sweep">
+          <path class="wedge" opacity="0.05" d="__WEDGE_3__"/>
+          <path class="wedge" opacity="0.09" d="__WEDGE_2__"/>
+          <path class="wedge" opacity="0.15" d="__WEDGE_1__"/>
+          <line class="lead" x1="0" y1="0" x2="0" y2="-180"/>
+        </g>
+        __BLIPS__
+        __EVENT__
+        <text class="centre-label" x="6" y="-4">0 m</text>
+        <text class="centre-label" x="6" y="-124">20 m</text>
+        <text class="readout" x="-186" y="190">NIS <tspan class="hot">2.1</tspan><tspan>__NIS_HOT__</tspan></text>
+      </svg>
     </div>
   </div>
-
-  <div class="ribbon" aria-hidden="true"><div class="track">__RIBBON__ __RIBBON__</div></div>
 </div>
 <script>
-  // Reduced motion: CSS stops the CSS animations; SVG (SMIL) motion is paused here.
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const art = document.querySelector("svg.art");
-  function applyMotion() {
-    if (reduce.matches) { art.pauseAnimations(); } else { art.unpauseAnimations(); }
-  }
-  applyMotion();
-  reduce.addEventListener("change", applyMotion);
-
-  // The hero is an iframe, so it cannot call Streamlit. Its links scroll the
-  // parent page to the real Streamlit buttons placed under the hero.
-  function scrollParentTo(id) {
-    try {
-      const target = window.parent.document.getElementById(id);
-      if (target) { target.scrollIntoView({ behavior: reduce.matches ? "auto" : "smooth", block: "start" }); }
-    } catch (err) { /* parent not reachable: the buttons are right below anyway */ }
-  }
-  document.getElementById("cta").addEventListener("click", (e) => { e.preventDefault(); scrollParentTo("sg-quickstart"); });
-  document.getElementById("how").addEventListener("click", (e) => { e.preventDefault(); scrollParentTo("sg-how"); });
+  // Pause every animation (CSS and SVG SMIL) for people who prefer less motion.
+  (function () {
+    var query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    function apply() {
+      var svg = document.querySelector("svg.scope");
+      if (!svg || !svg.pauseAnimations) { return; }
+      if (query.matches) { svg.pauseAnimations(); svg.setCurrentTime(0); } else { svg.unpauseAnimations(); }
+    }
+    apply();
+    if (query.addEventListener) { query.addEventListener("change", apply); }
+  })();
 </script>
 </body>
 </html>

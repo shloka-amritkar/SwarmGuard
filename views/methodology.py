@@ -1,10 +1,15 @@
 """Methodology: every equation the platform uses, its assumptions, fixes, decisions and credits.
 
-The equations are written to match the code exactly (each section names
-the file it comes from), so this page doubles as a viva reference.
+The equations are written to match the code exactly (each one names the
+file it comes from in a margin note), so this page doubles as a viva
+reference. Layout ("Ground Truth", docs/phases/phase-7.md B9): textbook-like,
+with Fraunces section titles, equations in outlined cards, stone margin
+notes and survey-mark dividers between the parts.
 """
 
 from __future__ import annotations
+
+import html
 
 import pandas as pd
 import streamlit as st
@@ -51,7 +56,7 @@ EQUATIONS: tuple[tuple[str, str, str, str], ...] = (
      r"\hat{p}_i = \arg\min_p \sum_{j \in \mathcal{T}_i} \bigl(\lVert p - p_j \rVert - r_{ij}\bigr)^2",
      "Repairs one drone from trusted (never flagged) neighbours; needs at least three of them."),
     ("Experimental ML detector (D)", "detection/detector_d_ml.py",
-     r"P_i = rac{1}{T}\sum_{t=1}^{T} p_t(	ext{attacked} \mid x_i), \qquad 	ext{raw flag}_i = P_i > 0.5",
+     r"P_i = \frac{1}{T}\sum_{t=1}^{T} p_t(\text{attacked} \mid x_i), \qquad \text{raw flag}_i = P_i > 0.5",
      "Average vote of T = 200 trees on 11 features built from A, B, C and GPS motion; trained on "
      "simulated runs only, split by run (F6). Experimental, never part of fusion."),
     ("Wilson interval", "core/utils.py",
@@ -95,8 +100,13 @@ CREDITS = (
     ("GNSS Guardian", "GitHub user szyraf", "feature engineering, Random Forest, Streamlit dashboard"),
     ("UAV Intelligence Fusion System", "Arzoo Tiwary", "Dempster-Shafer fusion, template reports, modular pipeline"),
     ("ZYRNAV Resilience Lab", "Chris Matheus Rozario", "scenario presets, decision inspector UI pattern"),
-    ("Wispr Flow", "visual design reference", "ivory canvas, serif headlines, pill navbar, flowing motion"),
-    ("Urban Macaw", "visual design reference (style only)", "tactile outlined buttons, hard shadows, bold numerals"),
+)
+
+DESIGN_CREDIT = (
+    "Interface: SwarmGuard's own original \"Ground Truth\" design system (survey maps, forensic case "
+    "files and amber instrument displays), with a general influence from neo-brutalist web design "
+    "(outlined shapes and hard shadows). Fonts: Fraunces, IBM Plex Sans and IBM Plex Mono, all under "
+    "the SIL Open Font License."
 )
 
 LIMITATIONS = (
@@ -114,15 +124,17 @@ LIMITATIONS = (
 
 
 def equations() -> None:
-    """Every equation in a paper card, with its source file and one sentence."""
+    """Every equation in an outlined card: title, equation, one sentence, and its source file as a margin note."""
+    c.html_block(c.survey_divider_html(1))
     c.section("Equations", "Each one matches the code in the file named under it.", eyebrow="Mathematics")
     for i in range(0, len(EQUATIONS), 2):
-        cols = st.columns(2)
+        cols = st.columns(2, gap="medium")
         for col, (title, source, latex, note) in zip(cols, EQUATIONS[i:i + 2]):
             with col, c.paper_card(f"eq-{i}-{title}"):
-                c.html_block(f'<p class="sg-card__title">{title}</p><p class="sg-hash">{source}</p>')
+                c.html_block(f'<p class="sg-card__title">{title}</p>')
                 st.latex(latex)
-                c.html_block(f'<p class="sg-equation-note">{note}</p>')
+                c.html_block(f'<p class="sg-equation-note">{note}</p>'
+                             f'<p class="sg-margin-note">source · <span class="sg-mono">{source}</span></p>')
 
 
 def blind_spot_table() -> pd.DataFrame:
@@ -138,6 +150,7 @@ def blind_spot_table() -> pd.DataFrame:
 
 def lists() -> None:
     """Assumptions, blind spots, fixes, decisions, credits, limitations."""
+    c.html_block(c.survey_divider_html(2))
     c.section("Assumptions")
     st.markdown("\n".join(f"- {a}" for a in ASSUMPTIONS))
     c.section("Blind-spot table", "What each detector is expected to do per preset attack: detect, "
@@ -151,19 +164,23 @@ def lists() -> None:
     with right:
         c.section("Design decisions")
         st.markdown("\n".join(f"- **{k}** {v}" for k, v in DECISIONS))
-    c.section("Credits", "Concepts only; all code was written independently.")
+    c.html_block(c.survey_divider_html(3))
+    c.section("Credits", "Research concepts only; all code was written independently.")
     st.dataframe(pd.DataFrame(CREDITS, columns=["work", "authors", "concepts used"]), hide_index=True,
                  width="stretch")
+    c.html_block(f'<p class="sg-margin-note">{html.escape(DESIGN_CREDIT)}</p>')
     c.section("Limitations")
     st.markdown("\n".join(f"- {x}" for x in LIMITATIONS))
 
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("How it", "works", eyebrow="Reference",
+    c.page_header("How it", "works", eyebrow="09 · Methodology",
                   caption="The mathematics, assumptions and honest limits behind every result.")
-    equations()
-    lists()
+    # WHY a keyed container: style.css gives sections inside it textbook-style Fraunces titles.
+    with st.container(key="sg-textbook"):
+        equations()
+        lists()
 
 
 main()

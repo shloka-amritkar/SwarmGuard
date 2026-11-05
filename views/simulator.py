@@ -18,12 +18,15 @@ from ui import components as c
 from ui import plots
 from ui.state import QUICK_START, run_scenario, verdict_strings
 
+# Survey-style legend symbols: (label, colour, shape)
 LEGEND = (
-    ("normal", "var(--sg-status-normal)"),
-    ("suspicious", "var(--sg-status-suspicious)"),
-    ("compromised", "var(--sg-status-alarm)"),
-    ("insufficient evidence", "var(--sg-status-no-evidence)"),
-    ("trail and formation links", "var(--sg-mint)"),
+    ("normal", "var(--sg-status-normal)", "dot"),
+    ("suspicious", "var(--sg-status-suspicious)", "dot"),
+    ("compromised", "var(--sg-status-alarm)", "dot"),
+    ("insufficient evidence", "var(--sg-status-no-evidence)", "dot"),
+    ("anchored drone", "var(--sg-amber)", "diamond"),
+    ("trail and formation links", "var(--sg-amber)", "line"),
+    ("range rings 10 m / 20 m", "var(--sg-stone)", "ring"),
 )
 
 
@@ -43,7 +46,7 @@ def controls() -> tuple[bool, bool, bool]:
         seed = int(st.number_input("Seed", min_value=0, max_value=1_000_000,
                                    value=int(st.session_state.get("seed") or 0), step=1, key="sim-seed"))
     with right:
-        st.html('<div style="height:28px"></div>')
+        c.html_block('<div class="sg-spacer-label"></div>')
         if st.button("Run simulation", type="primary", key="sim-run", width="stretch"):
             with st.spinner("Simulating..."):
                 run_scenario(key, seed=seed)
@@ -57,7 +60,7 @@ def controls() -> tuple[bool, bool, bool]:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Swarm", "simulator", eyebrow="Operations",
+    c.page_header("Swarm", "simulator", eyebrow="02 · Flight simulator",
                   caption="Pick a preset flight, run it, and play it back. Simulation result.")
     evaluation, offline, links = controls()
     pipe = st.session_state.get("pipeline")
@@ -67,11 +70,17 @@ def main() -> None:
     result = pipe.sim_result
     live = "Evaluation view: ground truth" if evaluation else f"{result.n_drones} drones"
     light = st.session_state.get("scenario_key") == "light_show_pune"
+    def flight_map() -> None:
+        # Switching camera reruns the page, so playback restarts at t = 0
+        # (Plotly plays the animation in the browser; Streamlit never learns
+        # which frame was showing). Documented in docs/notes/phase-7-explained.md.
+        camera = c.camera_control("sim")
+        c.chart(plots.swarm_map(result, verdict_strings(pipe), links=links, evaluation=evaluation,
+                                offline=offline, light_show=light, height=540, camera=camera),
+                key=f"sim-map-{camera}")  # WHY a key per camera: a new chart, not the old view
+
     c.console_panel(f"Flight · {st.session_state.get('scenario_key')} · seed {result.config.seed}",
-                    lambda: c.chart(plots.swarm_map(result, verdict_strings(pipe), links=links,
-                                                    evaluation=evaluation, offline=offline,
-                                                    light_show=light, height=540), key="sim-map"),
-                    key="sim-map", live=live)
+                    flight_map, key="sim-map", live=live)
     c.html_block(c.legend_html(LEGEND))
     c.explain_box("Each dot is one drone, coloured by its **fused verdict** and placed at its reported "
                   "GPS position. Press play to run the flight. In the *Evaluation view* hollow markers "

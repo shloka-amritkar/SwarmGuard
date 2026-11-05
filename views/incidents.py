@@ -16,7 +16,7 @@ import streamlit as st
 from core.utils import format_drones
 from ui import components as c
 from ui import plots
-from ui.state import get_storage, incident_table, pipeline_for_incident
+from ui.state import PATTERN_TITLES, get_storage, incident_table, pipeline_for_incident
 
 SELECT_KEY = "incidents-select"
 
@@ -49,13 +49,20 @@ def detector_details(incident: dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def case_card(incident: dict[str, Any], stamp: str | None = "filed") -> str:
+    """The incident as a case-file card (M6): tab with the case number, FILED time, pills, stamp."""
+    pills = [c.status_pill_html("alarm", "Incident")]
+    pills += [c.detector_pill_html(s, f"{s} · alarm") for s, d in sorted(incident["detected"].items())
+              if d["state"] == "alarm"]
+    title = PATTERN_TITLES.get(incident["pattern"], "Detector alarm")
+    detail = f"Scenario {incident['scenario_key']} · seed {incident['seed']} · simulation result"
+    return c.case_card_html(incident["incident_id"], title, c.utc_label(incident["created_utc"]), pills,
+                            detail=detail, stamp=stamp)
+
+
 def show_incident(incident: dict[str, Any]) -> None:
-    """Header pills, alarm timeline, explanation and detector table for one incident."""
-    pills = "".join(c.detector_pill_html(s) for s, d in sorted(incident["detected"].items())
-                    if d["state"] == "alarm")
-    c.html_block(f'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
-                 f'{c.status_pill_html("alarm", "Incident")}{pills}'
-                 f'<span class="sg-hash">{incident["incident_id"]} · {incident["created_utc"]}</span></div>')
+    """Case-file card, alarm timeline, explanation and detector table for one incident."""
+    c.html_block(case_card(incident))
     c.section("Alarm timeline", f"Onset estimate from the {incident['onset_source']}. Simulation result.")
     pipe = pipeline_for_incident(incident)
     c.chart(plots.alarm_timeline(pipe.all_runs(), incident.get("onset_estimate")), key="inc-timeline")
@@ -93,17 +100,20 @@ def compare_section(ids: list[str]) -> None:
     if len(ids) < 2:
         c.html_block('<p class="sg-card__body">At least two incidents are needed to compare.</p>')
         return
-    a, b = st.columns(2)
+    a, b = st.columns(2, gap="large")
     first = a.selectbox("First", ids, index=0, key="inc-cmp-a")
     second = b.selectbox("Second", ids, index=1, key="inc-cmp-b")
     storage = get_storage()
-    st.dataframe(comparison_rows(storage.get_incident(first), storage.get_incident(second)),
-                 hide_index=True, width="stretch")
+    one, two = storage.get_incident(first), storage.get_incident(second)
+    # WHY no stamps here: two stamps side by side would crowd the comparison.
+    a.html(case_card(one, stamp=None))
+    b.html(case_card(two, stamp=None))
+    st.dataframe(comparison_rows(one, two), hide_index=True, width="stretch")
 
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Incidents", eyebrow="Forensics",
+    c.page_header("Incident", "files", eyebrow="07 · Incidents",
                   caption="Opened automatically when any detector alarms. Simulation results.")
     if not get_storage().list_incidents():
         if c.empty_state("No incidents yet. Run a scenario with an attack and one opens automatically.",

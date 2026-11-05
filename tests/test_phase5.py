@@ -1,5 +1,8 @@
 """Phase 5 tests: design tokens, stickers, hero, components, plots, state helpers.
 
+Updated in Phase 7 for the "Ground Truth" design (new token values, sticker
+stroke width, hero content and font names); the behaviour tested is the same.
+
 These test the pure (non-Streamlit) parts. Whole pages are loaded with
 Streamlit's AppTest in tests/test_phase5_views.py.
 """
@@ -88,7 +91,7 @@ def test_css_variables_cover_the_palette() -> None:
     css = css_variables()
     for f in fields(PALETTE):
         assert f"--sg-{f.name.replace('_', '-')}: {getattr(PALETTE, f.name)};" in css
-    assert "--sg-radius-card: 16px;" in css and "--sg-dur-press: 90ms;" in css
+    assert "--sg-radius-card: 14px;" in css and "--sg-dur-press: 90ms;" in css
     sheet = stylesheet()
     assert sheet.startswith("@import url(")        # @import must come first
     assert "prefers-reduced-motion" in sheet
@@ -98,8 +101,8 @@ def test_every_css_variable_used_is_defined() -> None:
     sheet = stylesheet()
     defined = set(re.findall(r"(--sg-[a-z0-9-]+):", sheet))
     used = set(re.findall(r"var\((--sg-[a-z0-9-]+)", sheet))
-    # --sg-pill-colour, --sg-target and --sg-ribbon-duration are set per element.
-    assert used - defined <= {"--sg-pill-colour", "--sg-target", "--sg-ribbon-duration"}
+    # --sg-pill-colour, --sg-target, --sg-ribbon-duration and --sg-delay are set per element.
+    assert used - defined <= {"--sg-pill-colour", "--sg-target", "--sg-ribbon-duration", "--sg-delay"}
 
 
 def test_status_helpers() -> None:
@@ -116,14 +119,14 @@ def test_status_helpers() -> None:
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("name", STICKER_NAMES)
 def test_stickers_are_valid_svg(name: str) -> None:
-    root = ET.fromstring(sticker(name, size=48, rotate=-3))
+    root = ET.fromstring(sticker(name, size=48))
     assert root.tag.endswith("svg")
     assert root.get("aria-label")
-    assert root.get("stroke") == PALETTE.espresso and root.get("stroke-width") == "2"
+    assert root.get("stroke") == PALETTE.espresso and root.get("stroke-width") == "1.5"
 
 
 def test_sticker_validation() -> None:
-    assert len(STICKER_NAMES) == 11
+    assert len(STICKER_NAMES) == 12
     with pytest.raises(ValueError):
         sticker("face")
     with pytest.raises(ValueError):
@@ -135,8 +138,8 @@ def test_sticker_validation() -> None:
 def test_hero_is_complete() -> None:
     page = hero_html()
     assert re.findall(r"__[A-Z0-9_]+__", page) == []          # every placeholder filled
-    for needed in ("<textPath", "<animateMotion", "prefers-reduced-motion", "pauseAnimations",
-                   "Detect the drift,", "prove the attack.", "sg-quickstart", "bar--spike"):
+    for needed in ("prefers-reduced-motion", "pauseAnimations", "Where the drones", "really are.",
+                   "ALARM · motion check", "18.530°N", "73.865°E", "spoof-dot", "true-dot", "48.6"):
         assert needed in page
     assert "--sg-olive:" in page
 
@@ -221,7 +224,7 @@ def test_analysis_figures_build(shift_pipe: PipelineResult) -> None:
     sep, _ = min_separation(pipe.sim_result)
     assert len(plots.min_separation_chart(pipe.sim_result.times(), sep).data) >= 1
     for fig in (ts,):
-        assert fig.layout.template.layout.font.family.startswith("'Inter'")
+        assert fig.layout.template.layout.font.family.startswith("'IBM Plex Sans'")
 
 
 def test_experiment_figures_build() -> None:

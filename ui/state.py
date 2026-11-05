@@ -477,3 +477,42 @@ def incident_table(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
              "affected": affected_text(r["affected"]), "onset (s)": r["onset"],
              "created (UTC)": r["created_utc"], "package": "built" if r["zip_path"] else "not built"}
             for r in rows]
+
+
+# --------------------------------------------------------------------------
+# Hash ribbon (docs/phases/phase-7.md motif M5)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RibbonEntry:
+    """One item of the hash ribbon: a label (case number or scenario) and a SHA-256 hex digest."""
+
+    label: str
+    sha256: str
+    real: bool          # True = a signed evidence manifest; False = a scenario-config fallback
+
+
+def hash_ribbon_entries(limit: int = 8) -> list[RibbonEntry]:
+    """Real manifest hashes of the newest evidence packages, newest first.
+
+    Fallback when no package exists yet: the SHA-256 of each demo scenario's
+    configuration (canonical JSON of its SimConfig + AttackConfig), labelled
+    with the scenario key, so the ribbon never shows made-up hashes.
+    WHY canonical JSON: the same configuration always gives the same hash,
+    whatever order the keys happened to be written in.
+    """
+    from attacks.scenarios import scenario_keys          # WHY local: avoids a slow import at start-up
+    from forensics.hashing import canonical_json, sha256_bytes
+
+    try:
+        rows = get_storage().list_packages(limit)
+    except Exception as exc:  # noqa: BLE001  (no database must never break a page)
+        logger.warning("hash ribbon: could not read packages (%s)", exc)
+        rows = []
+    if rows:
+        return [RibbonEntry(r["incident_id"], r["manifest_sha256"], True) for r in rows]
+    entries = []
+    for key in scenario_keys()[:limit]:
+        s = get_scenario(key)
+        digest = sha256_bytes(canonical_json({"sim": s.sim.to_dict(), "attack": s.attack.to_dict()}))
+        entries.append(RibbonEntry(key, digest, False))
+    return entries

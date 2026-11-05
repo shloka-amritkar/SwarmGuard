@@ -247,7 +247,7 @@ def ml_tab() -> None:
 
 def main() -> None:
     """Draw the page."""
-    c.page_header("Experiments", eyebrow="Analysis",
+    c.page_header("Measured over", "many seeds", eyebrow="05 · Experiments",
                   caption="Statistics over many seeded runs. Every rate is a simulation result.")
     show_ml = st.toggle("Experimental ML detector", key="exp-ml",
                         help="Adds a tab for Detector D, a Random Forest trained on simulated runs.")
