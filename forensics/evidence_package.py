@@ -45,6 +45,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
+from analysis.experiments import PipelineResult
 from core.schema import SimResult
 from database.storage import GENESIS, Storage, utc_now
 from detection.base import DetectionRun
@@ -59,7 +60,7 @@ from forensics.signatures import (
     sign,
     verify,
 )
-from reports.pdf_report import build_pdf_report, timeline_figure
+from reports.pdf_report import build_pdf_report, timeline_figure, trajectory_figure
 
 logger = logging.getLogger(__name__)
 
@@ -238,6 +239,24 @@ def build_package(
         storage.save_package(incident.incident_id, folder, zip_path, manifest_hash)
     logger.info("built evidence package %s (manifest %s)", folder, manifest_hash[:16])
     return PackagePaths(folder, zip_path, report, manifest_hash, previous)
+
+
+def package_incident(
+    incident: Incident,
+    pipe: PipelineResult,
+    storage: Storage,
+    out_root: str | Path = "data/packages",
+    keys_dir: str | Path = "keys",
+) -> PackagePaths:
+    """Build the evidence package of an incident from its pipeline run.
+
+    Adds the flight-path figure, and passes every detector run plus the
+    fused run "F". Used by both the CLI (investigate) and the app (Evidence
+    Centre), so both produce identical packages.
+    """
+    return build_package(incident, pipe.sim_result, pipe.all_runs(), pipe.fusion.to_dataframe(),
+                         {"trajectories": trajectory_figure(pipe.sim_result)},
+                         out_root=out_root, storage=storage, keys_dir=keys_dir)
 
 
 # --------------------------------------------------------------------------

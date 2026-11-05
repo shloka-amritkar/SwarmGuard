@@ -35,7 +35,7 @@ import pandas as pd  # noqa: E402
 
 from analysis.calibration import calibrate, load_calibration, load_or_default, save_calibration  # noqa: E402
 from analysis.evasion_search import stealth_envelope  # noqa: E402
-from analysis.experiments import PipelineResult, builtin_values, run_pipeline, sweep  # noqa: E402
+from analysis.experiments import builtin_values, run_pipeline, sweep  # noqa: E402
 from analysis.experiments import summarise as summarise_sweep  # noqa: E402
 from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
 from analysis.propagation import propagation_study  # noqa: E402
@@ -45,9 +45,8 @@ from core.schema import SimResult  # noqa: E402
 from core.utils import drone_label  # noqa: E402
 from database.storage import DEFAULT_DB_PATH, Storage  # noqa: E402
 from detection.fusion import describe_pattern, pattern_key  # noqa: E402
-from forensics.evidence_package import VerificationReport, build_package, tamper_test, verify_package  # noqa: E402
-from forensics.incident import calibration_hash_for, from_run, make_incident_id, should_open_incident  # noqa: E402
-from reports.pdf_report import trajectory_figure  # noqa: E402
+from forensics.evidence_package import VerificationReport, package_incident, tamper_test, verify_package  # noqa: E402
+from forensics.incident import open_incident, should_open_incident  # noqa: E402
 from simulation.swarm import simulate  # noqa: E402
 
 logger = logging.getLogger(__name__)
@@ -306,23 +305,6 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------
 # Phase 4: investigation, verification, tamper test
 # --------------------------------------------------------------------------
-def _save_run(storage: Storage, scenario: Scenario, pipe: PipelineResult) -> int:
-    """Store the run and its per-detector metrics (evaluation view); returns the run id."""
-    result = pipe.sim_result
-    config = {"sim": scenario.sim.to_dict(), "attack": scenario.attack.to_dict(),
-              "detector": pipe.det_cfg.to_dict()}
-    run_id = storage.save_run(scenario.key, scenario.sim.seed, scenario.sim.config_hash(),
-                              config, summarise(result))
-    rows = []
-    for run in pipe.all_runs():
-        m = compute_metrics(result, run)
-        rows.append({"detector": run.short, "detected": m.detected, "delay": m.detection_delay,
-                     "false_alarms": len(m.false_alarm_drones), "id_precision": m.id_precision,
-                     "id_recall": m.id_recall})
-    storage.save_detection_summary(run_id, rows)
-    return run_id
-
-
 def cmd_investigate(args: argparse.Namespace) -> int:
     """Run, detect, fuse, recover; open an incident and build its signed evidence package."""
     scenario = get_scenario(args.scenario, seed=args.seed, centre_gain=args.centre_gain)
@@ -332,14 +314,14 @@ def cmd_investigate(args: argparse.Namespace) -> int:
         print("Simulation result: no anomaly detected; no incident opened (use --force to open one).")
         return 0
     storage = Storage(args.db)
-    run_id = _save_run(storage, scenario, pipe)
-    today = datetime.now(timezone.utc).date()
-    incident_id = make_incident_id(today, storage.next_incident_number(today))
-    incident = from_run(pipe, scenario.key, incident_id, calibration_hash_for(scenario.sim))
-    storage.save_incident(incident.to_dict(), run_id)
-    paths = build_package(incident, pipe.sim_result, pipe.all_runs(), pipe.fusion.to_dataframe(),
-                          {"trajectories": trajectory_figure(pipe.sim_result)},
-                          out_root=args.out, storage=storage, keys_dir=args.keys)
+    incident, is_new = open_incident(pipe, scenario.key, storage)
+    existing = storage.get_package(incident.incident_id)
+    if not is_new and existing is not None:
+        print(f"This exact run (same configs and seed) was already investigated as {incident.incident_id}.")
+        print(f"Package zip: {existing['zip_path']}")
+        return 0
+    paths = package_incident(incident, pipe, storage, out_root=args.out, keys_dir=args.keys)
+    incident_id = incident.incident_id
     print(f"Incident {incident_id} opened (pattern {incident.pattern}).")
     print("Explanation (simulation result):")
     for sentence in incident.explanation:

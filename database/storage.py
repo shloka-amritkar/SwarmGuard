@@ -206,6 +206,19 @@ class Storage:
                                (incident_id,)).fetchone()
         return json.loads(row["incident_json"]) if row else None
 
+    def find_incident_by_run_key(self, run_key: str) -> dict[str, Any] | None:
+        """The incident opened for exactly this run (same configs + seed), or None.
+
+        WHY: the same configuration and seed always give identical output
+        (rule R2), so a second incident for it would only duplicate the
+        first. The app and the CLI reuse the existing one instead.
+        """
+        with self._connect() as conn:
+            row = conn.execute("SELECT incident_json FROM incidents "
+                               "WHERE json_extract(incident_json, '$.run_key') = ? "
+                               "ORDER BY created_utc LIMIT 1", (run_key,)).fetchone()
+        return json.loads(row["incident_json"]) if row else None
+
     def list_incidents(self, pattern: str | None = None, scenario: str | None = None,
                        since: str | None = None) -> list[dict[str, Any]]:
         """Incident rows (newest first), optionally filtered.

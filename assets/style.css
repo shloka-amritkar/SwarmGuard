@@ -1,0 +1,1056 @@
+/* ==========================================================================
+   SwarmGuard stylesheet - "Ivory + Console" (docs/phases/phase-5.md 5.3-5.8)
+
+   RULE: this file contains NO colour values. Every colour is a CSS custom
+   property (var(--sg-...)) generated from core/palette.py by
+   ui/theme.py:css_variables(), which also prepends the Google Fonts import.
+   Tints use color-mix(), so no extra colours are invented.
+
+   Sections
+     1 base and Streamlit chrome     6 widgets
+     2 navigation (floating pill)    7 alerts, toasts, expanders, tabs
+     3 typography and layout        8 SwarmGuard components (.sg-*)
+     4 entrance motion               9 verification motion
+     5 tactile buttons              10 responsive + reduced motion
+   ========================================================================== */
+
+/* -------------------------------------------------------------- 1 base -- */
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+  background: var(--sg-ivory);
+  color: var(--sg-ink);
+  font-family: var(--sg-font-sans);
+  font-size: var(--sg-size-body);
+  line-height: 1.6;
+}
+
+/* Hide Streamlit decoration we do not use (the header itself stays: it hosts
+   the top navigation). */
+[data-testid="stDecoration"],
+[data-testid="stAppDeployButton"],
+[data-testid="stMainMenu"],
+[data-testid="stToolbar"] [data-testid="stToolbarActions"],
+#MainMenu,
+footer {
+  display: none !important;
+}
+
+[data-testid="stMainBlockContainer"] {
+  max-width: var(--sg-max-width);
+  padding: 96px var(--sg-gutter) 72px var(--sg-gutter);
+}
+
+::selection { background: var(--sg-lavender-2); color: var(--sg-ink); }
+
+a, a:visited { color: var(--sg-forest); text-underline-offset: 3px; }
+a:hover { color: var(--sg-forest-2); }
+
+/* --------------------------------------------------- 2 floating pill nav -- */
+[data-testid="stHeader"] {
+  background: transparent;
+  height: auto;
+}
+
+[data-testid="stTopNav"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: 999px;
+  margin: 12px auto 0 auto;
+  padding: 4px 8px;
+  width: fit-content;
+  max-width: calc(100vw - 32px);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+}
+
+[data-testid="stTopNavLink"],
+[data-testid="stTopNavSection"] {
+  position: relative;
+  font-family: var(--sg-font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--sg-ink-2);
+  border-radius: 999px;
+  transition: color var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-testid="stTopNavLink"]:hover,
+[data-testid="stTopNavSection"]:hover {
+  color: var(--sg-forest);
+  background: var(--sg-ivory);
+}
+
+/* Active link: forest text with an underline that slides in from the centre. */
+[data-testid="stTopNavLink"]::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sg-forest);
+  transform: scaleX(0);
+  transition: transform var(--sg-dur-enter) var(--sg-ease);
+}
+
+[data-testid="stTopNavLink"][aria-current="page"],
+[data-testid="stTopNavLink"][aria-selected="true"] {
+  color: var(--sg-forest);
+  font-weight: 600;
+}
+
+[data-testid="stTopNavLink"][aria-current="page"]::after,
+[data-testid="stTopNavLink"][aria-selected="true"]::after {
+  transform: scaleX(1);
+}
+
+[data-testid="stTopNavPopover"],
+[data-testid="stTopNavPopoverBody"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+}
+
+/* Context bar under the navigation: wordmark, page, status, scenario. */
+.sg-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--sg-line);
+}
+
+.sg-topbar__right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.sg-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--sg-ink);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.sg-wordmark__swarm {
+  font-family: var(--sg-font-sans);
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  font-size: 15px;
+}
+
+.sg-wordmark__guard {
+  font-family: var(--sg-font-display);
+  font-weight: 800;
+  font-size: 17px;
+  margin-left: -6px;
+}
+
+.sg-scenario-tag {
+  font-family: var(--sg-font-mono);
+  font-size: 12px;
+  color: var(--sg-ink-2);
+  border: 1px solid var(--sg-line);
+  background: var(--sg-paper);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* ------------------------------------------------- 3 typography + layout -- */
+h1, h2, h3, h4, h5, h6,
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+  color: var(--sg-ink);
+  letter-spacing: -0.01em;
+}
+
+h1, [data-testid="stMarkdownContainer"] h1 {
+  font-family: var(--sg-font-serif);
+  font-weight: 400;
+  font-size: var(--sg-size-title);
+  line-height: 1.1;
+}
+
+h2, h3, [data-testid="stMarkdownContainer"] h2, [data-testid="stMarkdownContainer"] h3 {
+  font-family: var(--sg-font-display);
+  font-weight: 700;
+}
+
+p, li, label, [data-testid="stMarkdownContainer"] {
+  font-family: var(--sg-font-sans);
+}
+
+code, pre, kbd, .sg-mono {
+  font-family: var(--sg-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-testid="stMarkdownContainer"] code {
+  background: var(--sg-ivory);
+  color: var(--sg-forest);
+  border: 1px solid var(--sg-line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 0.9em;
+}
+
+.sg-page-head { margin: 8px 0 32px 0; }
+
+.sg-page-title {
+  font-family: var(--sg-font-serif);
+  font-weight: 400;
+  font-size: var(--sg-size-title);
+  line-height: 1.08;
+  margin: 6px 0 8px 0;
+  color: var(--sg-ink);
+}
+
+.sg-page-title em { font-style: italic; color: var(--sg-forest); }
+
+.sg-page-caption { color: var(--sg-ink-2); max-width: 760px; margin: 0; }
+
+.sg-eyebrow {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: var(--sg-size-eyebrow);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+  margin: 0;
+}
+
+.sg-section {
+  margin: var(--sg-section-gap) 0 16px 0;
+}
+
+.sg-section__title {
+  font-family: var(--sg-font-display);
+  font-weight: 700;
+  font-size: var(--sg-size-section);
+  margin: 4px 0 4px 0;
+  color: var(--sg-ink);
+}
+
+.sg-section__caption { color: var(--sg-muted); margin: 0; font-size: 14px; }
+
+.sg-sim-label {
+  font-family: var(--sg-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+}
+
+/* Visually hidden but read by screen readers (used by the KPI count-up). */
+.sg-sr {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------ 4 entrance motion -- */
+@keyframes sg-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > * {
+  animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both;
+}
+
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(2) { animation-delay: 40ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(3) { animation-delay: 80ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(4) { animation-delay: 120ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(5) { animation-delay: 160ms; }
+[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] > *:nth-child(n+6) { animation-delay: 200ms; }
+
+.sg-enter { animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both; }
+
+/* ------------------------------------------------------ 5 tactile buttons -- */
+.stButton > button,
+.stDownloadButton > button,
+.stFormSubmitButton > button,
+[data-testid="stBaseButton-primary"],
+[data-testid="stBaseButton-secondary"],
+.sg-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--sg-ink);
+  background: var(--sg-lavender);
+  border: var(--sg-outline-button) solid var(--sg-ink);
+  border-radius: var(--sg-radius-button);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  padding: 8px 18px;
+  min-height: 42px;
+  transition:
+    transform var(--sg-dur-hover) var(--sg-ease),
+    box-shadow var(--sg-dur-hover) var(--sg-ease),
+    background var(--sg-dur-hover) var(--sg-ease);
+}
+
+.stButton > button p,
+.stDownloadButton > button p,
+.stFormSubmitButton > button p { font-weight: 600; }
+
+.stButton > button:hover,
+.stDownloadButton > button:hover,
+.stFormSubmitButton > button:hover,
+.sg-btn:hover {
+  color: var(--sg-ink);
+  border-color: var(--sg-ink);
+  background: var(--sg-lavender-2);
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--sg-shadow-button) + 1px) calc(var(--sg-shadow-button) + 1px) 0 var(--sg-ink);
+}
+
+/* Press into the shadow. */
+.stButton > button:active,
+.stDownloadButton > button:active,
+.stFormSubmitButton > button:active,
+.sg-btn:active {
+  transform: translate(var(--sg-shadow-button), var(--sg-shadow-button));
+  box-shadow: 0 0 0 var(--sg-ink);
+  transition-duration: var(--sg-dur-press);
+}
+
+/* CSS-only ripple: a lavender circle grows from the centre while pressed. */
+.stButton > button::after,
+.stDownloadButton > button::after,
+.stFormSubmitButton > button::after,
+.sg-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--sg-lavender-2);
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  z-index: -1;
+  transition: transform var(--sg-dur-draw) var(--sg-ease), opacity var(--sg-dur-draw) var(--sg-ease);
+  pointer-events: none;
+}
+
+.stButton > button:active::after,
+.stDownloadButton > button:active::after,
+.stFormSubmitButton > button:active::after,
+.sg-btn:active::after {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  transition-duration: 0ms;
+}
+
+.stButton > button:focus-visible,
+.stDownloadButton > button:focus-visible,
+.sg-btn:focus-visible {
+  outline: 2px solid var(--sg-forest);
+  outline-offset: 3px;
+}
+
+.stButton > button:disabled,
+.stDownloadButton > button:disabled {
+  background: var(--sg-ivory);
+  color: var(--sg-muted);
+  border-color: var(--sg-muted);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Secondary buttons (type="secondary", the Streamlit default): paper fill. */
+[data-testid="stBaseButton-secondary"] { background: var(--sg-paper); }
+[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-ivory); }
+
+/* Tertiary buttons read as text links. */
+[data-testid="stBaseButton-tertiary"] {
+  color: var(--sg-forest);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Destructive variant (tamper test only): put the button in
+   st.container(key="sg-danger-..."). Red fill, white text. */
+[class*="st-key-sg-danger"] .stButton > button {
+  background: var(--sg-status-alarm);
+  color: var(--sg-paper);
+}
+
+[class*="st-key-sg-danger"] .stButton > button p { color: var(--sg-paper); }
+
+[class*="st-key-sg-danger"] .stButton > button:hover {
+  background: var(--sg-status-alarm);
+  color: var(--sg-paper);
+  filter: brightness(0.92);
+}
+
+[class*="st-key-sg-danger"] .stButton > button::after {
+  background: var(--sg-ink);
+  opacity: 0;
+}
+
+[class*="st-key-sg-danger"] .stButton > button:active::after { opacity: 0.18; }
+
+/* ------------------------------------------------------------- 6 widgets -- */
+[data-baseweb="input"],
+[data-baseweb="textarea"],
+[data-baseweb="select"] > div,
+[data-testid="stNumberInput"] [data-baseweb="input"],
+[data-testid="stDateInput"] [data-baseweb="input"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-button) solid var(--sg-ink) !important;
+  border-radius: var(--sg-radius-input) !important;
+  font-family: var(--sg-font-sans);
+  transition: box-shadow var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-baseweb="input"]:focus-within,
+[data-baseweb="textarea"]:focus-within,
+[data-baseweb="select"] > div:focus-within {
+  box-shadow: 0 0 0 3px var(--sg-lavender);
+}
+
+[data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea {
+  background: transparent;
+  color: var(--sg-ink);
+}
+
+[data-testid="stNumberInput"] button {
+  background: var(--sg-paper);
+  color: var(--sg-ink);
+  border-left: 1px solid var(--sg-line);
+}
+
+[data-testid="stNumberInput"] button:hover { background: var(--sg-lavender); color: var(--sg-ink); }
+
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--sg-ink-2);
+}
+
+/* Dropdown menu of selects. */
+[data-baseweb="popover"] ul[role="listbox"],
+[data-baseweb="menu"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+}
+
+[data-baseweb="menu"] li[aria-selected="true"],
+ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
+
+[data-baseweb="tag"] {
+  background: var(--sg-lavender) !important;
+  color: var(--sg-ink) !important;
+  border: 1px solid var(--sg-ink);
+  border-radius: 999px !important;
+}
+
+/* Sliders: forest track and an outlined thumb. */
+[data-testid="stSlider"] [role="slider"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-button) solid var(--sg-ink);
+  box-shadow: 2px 2px 0 var(--sg-ink);
+  width: 18px;
+  height: 18px;
+  transition: transform var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-testid="stSlider"] [role="slider"]:hover { transform: scale(1.1); }
+
+[data-testid="stSliderThumbValue"] {
+  font-family: var(--sg-font-mono);
+  color: var(--sg-forest);
+  font-size: 12px;
+}
+
+[data-testid="stSliderTickBar"] { font-family: var(--sg-font-mono); color: var(--sg-muted); }
+
+/* Checkbox, toggle and radio: forest accent with a smooth state change. */
+[data-testid="stCheckbox"] label span,
+[data-testid="stRadio"] label div:first-child {
+  transition: background var(--sg-dur-hover) var(--sg-ease), border-color var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-testid="stCheckbox"] p,
+[data-testid="stRadio"] p { font-family: var(--sg-font-sans); color: var(--sg-ink); }
+
+input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
+
+/* Data tables: outlined card, mono numbers inside (canvas-drawn by Streamlit). */
+[data-testid="stDataFrame"],
+[data-testid="stTable"] {
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+  overflow: hidden;
+  background: var(--sg-paper);
+}
+
+[data-testid="stTable"] table { font-family: var(--sg-font-sans); font-size: var(--sg-size-table); }
+[data-testid="stTable"] th { background: var(--sg-ivory); color: var(--sg-ink-2); font-weight: 600; }
+[data-testid="stTable"] td { border-color: var(--sg-line); }
+
+/* Code blocks (hashes, PEM keys). */
+[data-testid="stCode"],
+.stCode pre {
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+  background: var(--sg-ivory) !important;
+  font-family: var(--sg-font-mono);
+  font-size: var(--sg-size-data);
+}
+
+/* Progress bars. */
+[data-testid="stProgress"] [role="progressbar"] > div {
+  border: 1px solid var(--sg-ink);
+  border-radius: 999px;
+  background: var(--sg-paper);
+}
+
+[data-testid="stProgress"] [role="progressbar"] > div > div > div { background: var(--sg-forest); }
+
+/* Plotly charts sit on paper cards. */
+[data-testid="stPlotlyChart"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 8px 8px 4px 8px;
+}
+
+/* Charts and iframes inside console panels take the panel colour instead. */
+[class*="st-key-sg-console"] [data-testid="stPlotlyChart"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* Graphviz and LaTeX blocks get the same paper card. */
+[data-testid="stGraphVizChart"],
+[data-testid="stMarkdownContainer"] .katex-display {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 16px;
+}
+
+[data-testid="stIFrame"] { border: none; }
+
+/* ------------------------------------- 7 alerts, toasts, expanders, tabs -- */
+[data-testid="stAlert"],
+[data-testid="stAlertContainer"] {
+  background: var(--sg-paper) !important;
+  color: var(--sg-ink) !important;
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-left-width: 6px;
+  border-radius: var(--sg-radius-input);
+}
+
+[data-testid="stAlertContentInfo"] { border-left-color: var(--sg-forest); }
+[data-testid="stAlertContentSuccess"] { border-left-color: var(--sg-status-normal); }
+[data-testid="stAlertContentWarning"] { border-left-color: var(--sg-status-suspicious); }
+[data-testid="stAlertContentError"] { border-left-color: var(--sg-status-alarm); }
+
+[data-testid="stAlert"] p { color: var(--sg-ink); }
+
+[data-testid="stToast"] {
+  background: var(--sg-paper);
+  color: var(--sg-ink);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+}
+
+[data-testid="stExpander"] details {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+}
+
+[data-testid="stExpander"] summary {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  color: var(--sg-ink);
+  border-radius: var(--sg-radius-input);
+}
+
+[data-testid="stExpander"] summary:hover { color: var(--sg-forest); background: var(--sg-ivory); }
+
+/* Tabs: the selected-tab indicator slides between tabs. */
+[data-baseweb="tab-list"] {
+  gap: 4px;
+  border-bottom: 1px solid var(--sg-line);
+}
+
+[data-baseweb="tab"] {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  color: var(--sg-ink-2);
+  background: transparent;
+  border-radius: var(--sg-radius-input) var(--sg-radius-input) 0 0;
+  transition: color var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-baseweb="tab"]:hover { color: var(--sg-forest); background: var(--sg-paper); }
+[data-baseweb="tab"][aria-selected="true"] { color: var(--sg-forest); }
+
+[data-baseweb="tab-highlight"] {
+  background: var(--sg-forest) !important;
+  height: 3px;
+  border-radius: 3px;
+  transition: transform var(--sg-dur-enter) var(--sg-ease), width var(--sg-dur-enter) var(--sg-ease) !important;
+}
+
+[data-baseweb="tab-border"] { background: transparent; }
+
+/* ----------------------------------------------- 8 SwarmGuard components -- */
+.sg-card {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 20px 22px;
+}
+
+.sg-card--feature {
+  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-ink);
+  transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease);
+}
+
+.sg-card--feature:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-ink);
+}
+
+.sg-card__title {
+  font-family: var(--sg-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  margin: 10px 0 4px 0;
+}
+
+.sg-card__body { color: var(--sg-ink-2); margin: 0; font-size: 14px; }
+
+.sg-card__sticker { display: block; }
+
+/* Keyed containers that act as cards (scenario cards hold a real button). */
+[class*="st-key-sg-card"] {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 18px 20px 20px 20px;
+  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-ink);
+  transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease);
+}
+
+[class*="st-key-sg-card"]:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-ink);
+}
+
+/* Console panels: dark green-black, used for map, feed and verification. */
+[class*="st-key-sg-console"],
+.sg-console {
+  background: var(--sg-console);
+  color: var(--sg-console-tx);
+  border: 1px solid var(--sg-console-ln);
+  border-radius: var(--sg-radius-card);
+  padding: 18px 20px;
+}
+
+[class*="st-key-sg-console"] p,
+[class*="st-key-sg-console"] label,
+[class*="st-key-sg-console"] [data-testid="stWidgetLabel"] p,
+[class*="st-key-sg-console"] [data-testid="stMarkdownContainer"],
+.sg-console p { color: var(--sg-console-tx); }
+
+[class*="st-key-sg-console"] [data-testid="stCaptionContainer"],
+[class*="st-key-sg-console"] small { color: var(--sg-console-mu); }
+
+/* Widgets inside console panels keep their tactile look but on the dark panel. */
+[class*="st-key-sg-console"] [data-testid="stSlider"] [role="slider"] {
+  background: var(--sg-mint);
+  border-color: var(--sg-console-tx);
+  box-shadow: none;
+}
+
+[class*="st-key-sg-console"] [data-testid="stSliderThumbValue"] { color: var(--sg-mint); }
+[class*="st-key-sg-console"] [data-testid="stSliderTickBar"] { color: var(--sg-console-mu); }
+
+[class*="st-key-sg-console"] [data-testid="stCheckbox"] p { color: var(--sg-console-tx); }
+
+.sg-console__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sg-console__title {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-console-mu);
+  margin: 0;
+}
+
+.sg-console__live {
+  font-family: var(--sg-font-mono);
+  font-size: 11px;
+  color: var(--sg-mint);
+  border: 1px solid var(--sg-console-ln);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+/* KPI cards: Bricolage numerals with count-up and a thin status bar. */
+.sg-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+.sg-kpi {
+  position: relative;
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 16px 18px 18px 18px;
+  overflow: hidden;
+}
+
+.sg-kpi__label {
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: var(--sg-size-eyebrow);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sg-muted);
+  margin: 0;
+}
+
+.sg-kpi__value {
+  font-family: var(--sg-font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1.05;
+  margin: 8px 0 2px 0;
+  color: var(--sg-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.sg-kpi__delta { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-ink-2); margin: 0; }
+
+.sg-kpi__bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: var(--sg-line);
+}
+
+.sg-kpi--normal .sg-kpi__bar { background: var(--sg-status-normal); }
+.sg-kpi--suspicious .sg-kpi__bar { background: var(--sg-status-suspicious); }
+.sg-kpi--alarm .sg-kpi__bar { background: var(--sg-status-alarm); }
+.sg-kpi--none .sg-kpi__bar { background: var(--sg-status-no-evidence); }
+
+/* Count-up: an integer custom property animated from 0, shown via a CSS
+   counter. Browsers without @property skip the animation and show the
+   final number straight away. */
+@property --sg-num {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@keyframes sg-count { from { --sg-num: 0; } }
+
+.sg-count {
+  --sg-num: var(--sg-target);
+  counter-reset: sg-count var(--sg-num);
+  animation: sg-count var(--sg-dur-draw) var(--sg-ease) both;
+}
+
+.sg-count::after { content: counter(sg-count); }
+
+/* Status pills: ink text on a tinted fill, status colour on border and dot.
+   (Status colours are too light to be readable as text: see core/palette.py.) */
+.sg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sg-font-sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sg-ink);
+  border: 1.5px solid var(--sg-pill-colour, var(--sg-status-no-evidence));
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 16%, var(--sg-paper));
+  border-radius: 999px;
+  padding: 3px 10px 3px 8px;
+  white-space: nowrap;
+}
+
+.sg-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sg-pill-colour, var(--sg-status-no-evidence));
+}
+
+.sg-pill--normal, .sg-pill--pass { --sg-pill-colour: var(--sg-status-normal); }
+.sg-pill--suspicious, .sg-pill--warn { --sg-pill-colour: var(--sg-status-suspicious); }
+.sg-pill--alarm, .sg-pill--fail { --sg-pill-colour: var(--sg-status-alarm); }
+.sg-pill--none { --sg-pill-colour: var(--sg-status-no-evidence); }
+.sg-pill--det-a { --sg-pill-colour: var(--sg-det-a); }
+.sg-pill--det-b { --sg-pill-colour: var(--sg-det-b); }
+.sg-pill--det-c { --sg-pill-colour: var(--sg-det-c); }
+.sg-pill--det-d { --sg-pill-colour: var(--sg-det-d); }
+.sg-pill--brand { --sg-pill-colour: var(--sg-forest); }
+
+/* Pills inside console panels: light text on a dark tint. */
+.sg-console .sg-pill,
+[class*="st-key-sg-console"] .sg-pill {
+  color: var(--sg-console-tx);
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 22%, var(--sg-console));
+}
+
+/* Event feed (inside a console panel). */
+.sg-feed { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; }
+
+.sg-feed__row {
+  display: grid;
+  grid-template-columns: 74px 12px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both;
+}
+
+.sg-feed__row:nth-child(odd) { background: var(--sg-console-2); }
+.sg-feed__row:nth-child(2) { animation-delay: 40ms; }
+.sg-feed__row:nth-child(3) { animation-delay: 80ms; }
+.sg-feed__row:nth-child(4) { animation-delay: 120ms; }
+.sg-feed__row:nth-child(n+5) { animation-delay: 160ms; }
+
+.sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-console-mu); }
+
+.sg-feed__dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--sg-status-no-evidence);
+}
+
+.sg-feed__dot--normal { background: var(--sg-status-normal); }
+.sg-feed__dot--suspicious { background: var(--sg-status-suspicious); }
+.sg-feed__dot--alarm { background: var(--sg-status-alarm); }
+
+.sg-feed__text { font-size: 14px; color: var(--sg-console-tx); margin: 0; }
+.sg-feed__meta { font-family: var(--sg-font-mono); font-size: 11px; color: var(--sg-console-mu); margin: 0; }
+
+/* Ribbon: a black band with detection events scrolling past. */
+.sg-ribbon {
+  position: relative;
+  overflow: hidden;
+  background: var(--sg-ink);
+  color: var(--sg-paper);
+  border-radius: 999px;
+  padding: 10px 0;
+  white-space: nowrap;
+}
+
+.sg-ribbon__track {
+  display: inline-flex;
+  gap: 40px;
+  padding-left: 40px;
+  animation: sg-ribbon var(--sg-ribbon-duration, 60s) linear infinite;
+  font-family: var(--sg-font-sans);
+  font-size: 14px;
+}
+
+.sg-ribbon__item b { font-weight: 600; }
+.sg-ribbon__sep { color: var(--sg-muted); }
+
+@keyframes sg-ribbon {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Pattern banner: outlined, with a red bar (only used when fusion alarms). */
+.sg-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-left: 8px solid var(--sg-status-alarm);
+  border-radius: var(--sg-radius-input);
+  padding: 14px 18px;
+  margin: 8px 0 24px 0;
+}
+
+.sg-banner--info { border-left-color: var(--sg-forest); }
+.sg-banner__title { font-family: var(--sg-font-display); font-weight: 700; font-size: 17px; margin: 0; }
+.sg-banner__body { color: var(--sg-ink-2); margin: 2px 0 0 0; font-size: 14px; }
+
+/* Drone inspector: an outlined "properties" card. */
+.sg-inspector {
+  background: var(--sg-paper);
+  border: var(--sg-outline-card) solid var(--sg-ink);
+  border-radius: var(--sg-radius-card);
+  padding: 18px 20px;
+}
+
+.sg-inspector__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--sg-line);
+}
+
+.sg-inspector__name { font-family: var(--sg-font-display); font-weight: 800; font-size: 22px; margin: 0; }
+
+.sg-props { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
+.sg-props th { text-align: left; font-weight: 600; color: var(--sg-ink-2); padding: 7px 8px 7px 0; }
+.sg-props td { padding: 7px 0; border-top: 1px solid var(--sg-line); }
+.sg-props tr:first-child td, .sg-props tr:first-child th { border-top: none; }
+.sg-props .sg-num { font-family: var(--sg-font-mono); font-size: var(--sg-size-data); text-align: right; }
+
+.sg-reasons { margin: 8px 0 0 0; padding-left: 18px; color: var(--sg-ink-2); font-size: 14px; }
+.sg-reasons li { margin: 3px 0; }
+
+.sg-action {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--sg-ivory);
+  border: 1px solid var(--sg-line);
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* Empty state: sticker + one sentence + one button. */
+.sg-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 40px 20px 12px 20px;
+}
+
+.sg-empty__text { color: var(--sg-ink-2); max-width: 460px; margin: 0; }
+
+/* Small helpers. */
+.sg-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--sg-ink-2); }
+.sg-legend__swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--sg-ink); }
+.sg-equation-note { color: var(--sg-ink-2); font-size: 14px; margin-top: 8px; }
+.sg-hash { font-family: var(--sg-font-mono); font-size: 12px; word-break: break-all; color: var(--sg-ink-2); }
+
+/* -------------------------------------------------- 9 verification motion -- */
+.sg-verify { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 14px; }
+
+.sg-verify td { padding: 8px 10px; color: var(--sg-console-tx); background: var(--sg-console-2); }
+.sg-verify td:first-child { border-radius: 10px 0 0 10px; width: 40px; }
+.sg-verify td:last-child { border-radius: 0 10px 10px 0; }
+.sg-verify .sg-verify__name { font-family: var(--sg-font-mono); font-size: 13px; }
+.sg-verify .sg-verify__detail { color: var(--sg-console-mu); font-size: 13px; }
+
+/* PASS: the check mark draws itself. */
+.sg-check path {
+  stroke: var(--sg-status-normal);
+  stroke-width: 3;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: sg-draw var(--sg-dur-draw) var(--sg-ease) forwards;
+}
+
+.sg-verify tr:nth-child(2) .sg-check path { animation-delay: 60ms; }
+.sg-verify tr:nth-child(3) .sg-check path { animation-delay: 120ms; }
+.sg-verify tr:nth-child(4) .sg-check path { animation-delay: 180ms; }
+.sg-verify tr:nth-child(n+5) .sg-check path { animation-delay: 240ms; }
+
+@keyframes sg-draw { to { stroke-dashoffset: 0; } }
+
+.sg-cross path { stroke: var(--sg-status-alarm); stroke-width: 3; stroke-linecap: round; fill: none; }
+.sg-dash path { stroke: var(--sg-status-suspicious); stroke-width: 3; stroke-linecap: round; fill: none; }
+
+/* FAIL: the row shakes once and turns red-tinted. */
+.sg-verify tr.sg-verify--fail td {
+  background: color-mix(in srgb, var(--sg-status-alarm) 28%, var(--sg-console));
+  animation: sg-shake var(--sg-dur-enter) var(--sg-ease) 1;
+}
+
+@keyframes sg-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.sg-byte {
+  font-family: var(--sg-font-mono);
+  background: color-mix(in srgb, var(--sg-status-alarm) 18%, var(--sg-paper));
+  border: 1.5px solid var(--sg-status-alarm);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* ------------------------------------------- 10 responsive + reduced motion -- */
+@media (max-width: 900px) {
+  [data-testid="stMainBlockContainer"] { padding: 88px 16px 56px 16px; }
+  .sg-page-title { font-size: 32px; }
+  .sg-kpi__value { font-size: 32px; }
+  [data-testid="stTopNav"] { border-radius: var(--sg-radius-card); }
+  .sg-feed__row { grid-template-columns: 64px 12px 1fr; }
+}
+
+@media (max-width: 640px) {
+  [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] { min-width: 100% !important; }
+  .sg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sg-topbar { gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+  }
+  .stButton > button:hover,
+  .stButton > button:active,
+  .stDownloadButton > button:hover,
+  .stDownloadButton > button:active,
+  .sg-card--feature:hover,
+  [class*="st-key-sg-card"]:hover { transform: none; }
+  .sg-ribbon__track { animation: none; }
+  .sg-check path { stroke-dashoffset: 0; }
+}

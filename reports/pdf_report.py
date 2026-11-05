@@ -13,8 +13,9 @@ LAYOUT (top to bottom)
 Every page has a header and footer with the incident id and page number.
 
 STYLE: white paper (printable), black outlines, forest (brand) headings,
-neutral line-colour table headers; red appears ONLY for alarms (fused-alarm
-bars, attacked drones). Lavender is the app's button colour and is not used
+neutral line-colour table headers; red appears ONLY for alarms (the fused-alarm
+bars). Drones the simulation attacked are drawn in forest, because that is
+ground truth, not an alarm. Lavender is the app's button colour and is not used
 in print. All colours come from core/palette.py (PALETTE), the same
 module the Streamlit app uses, so the report always matches the app.
 Fonts: ReportLab's built-in Helvetica and Courier (always available, no
@@ -148,7 +149,8 @@ def timeline_figure(runs: Sequence[DetectionRun], onset: float | None) -> Figure
 def trajectory_figure(result: SimResult) -> Figure:
     """Top-down paths: reported GPS (dotted) and SIMULATION GROUND TRUTH (solid).
 
-    Drones the simulation attacked are drawn in red. WHY show truth here:
+    Drones the simulation attacked are drawn in forest (not red: red is kept
+    strictly for detector alarms, and this is ground truth). WHY show truth here:
     this figure goes into the evidence package as an evaluation aid and is
     labelled as ground truth, which no detector ever saw (rule R1).
     """
@@ -156,12 +158,12 @@ def trajectory_figure(result: SimResult) -> Figure:
     attacked = result.attacked_drones()
     fig, ax = plt.subplots(figsize=(8.0, 6.0), dpi=150)
     for i in range(result.n_drones):
-        colour = PALETTE.status_alarm if i in attacked else PALETTE.ink
+        colour = PALETTE.forest if i in attacked else PALETTE.ink
         ax.plot(true_pos[:, i, 0], true_pos[:, i, 1], "-", color=colour, lw=1.0)
         ax.plot(gps[:, i, 0], gps[:, i, 1], ":", color=colour, lw=0.7)
     ax.plot([], [], "-", color=PALETTE.ink, label="true path (SIMULATION GROUND TRUTH)")
     ax.plot([], [], ":", color=PALETTE.ink, label="reported GPS")
-    ax.plot([], [], "-", color=PALETTE.status_alarm, label="drone attacked in the simulation")
+    ax.plot([], [], "-", color=PALETTE.forest, label="drone attacked in the simulation")
     ax.set_xlabel("East (m)")
     ax.set_ylabel("North (m)")
     ax.set_aspect("equal", adjustable="datalim")

@@ -40,7 +40,8 @@ Colour roles in the current palette:
   and the header rule use it.
 - **lavender** `#E6DDFE`: the app's button colour. It is not used in print.
 - **red** `#C8221B` (`status_alarm`): ONLY alarms. In the PDF that means
-  the fused-alarm bars and the drones the simulation attacked.
+  the fused-alarm bars. Drones the simulation attacked are drawn in forest
+  in the flight-path figure, because that is ground truth, not an alarm.
 - **line** `#E4E1D3`: neutral table header rows and figure gridlines.
 - **ivory, ink, muted, the console colours, and the fixed status and
   detector colours** (A blue, B teal, C ochre, D violet).

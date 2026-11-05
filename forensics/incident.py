@@ -37,11 +37,13 @@ import numpy as np
 
 from analysis.calibration import calibration_path
 from analysis.experiments import PipelineResult
-from config import DetectorConfig, SimConfig
+from analysis.metrics import compute_metrics
+from config import AttackConfig, DetectorConfig, SimConfig
+from database.storage import Storage
 from core.schema import Verdict
 from detection.base import DetectionRun
 from detection.fusion import FusionResult, describe_pattern, detector_state, pattern_key
-from forensics.hashing import sha256_file
+from forensics.hashing import canonical_json, sha256_bytes, sha256_file
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +90,17 @@ def calibration_hash_for(sim: SimConfig) -> str:
     return sha256_file(path) if path.exists() else NO_CALIBRATION
 
 
+def run_key(sim: SimConfig, atk: AttackConfig, det: DetectorConfig) -> str:
+    """SHA-256 identifying one exact run: swarm config (incl. seed), attack and thresholds.
+
+        run_key = sha256(canonical_json({"sim": ..., "attack": ..., "detector": ...}))
+
+    Same key = same inputs = identical output (rule R2).
+    """
+    return sha256_bytes(canonical_json({"sim": sim.to_dict(), "attack": atk.to_dict(),
+                                        "detector": det.to_dict()}))
+
+
 def make_incident_id(day: date, number: int) -> str:
     """("2026-11-05", 7) -> "SG-20261105-007"."""
     if not (1 <= number <= 999):
@@ -128,6 +141,7 @@ class Incident:
     recovery: dict[str, Any]
     simulation_ground_truth: dict[str, Any]
     explanation: list[str] = field(default_factory=list)
+    run_key: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Plain JSON-ready dictionary."""
@@ -298,8 +312,58 @@ def from_run(
         onset_estimate=onset, onset_source=source,
         fusion=fusion_summary(pipe.fusion), pattern=key, pattern_description=describe_pattern(key),
         recovery=recovery_summary(pipe), simulation_ground_truth=ground_truth_summary(pipe),
+        run_key=run_key(sim_cfg, atk_cfg, pipe.det_cfg),
     )
     incident.explanation = explain_incident(incident)
     logger.info("opened incident %s (%s)", incident_id, key)
     return incident
 
+
+# --------------------------------------------------------------------------
+# Opening an incident (shared by the CLI and the app)
+# --------------------------------------------------------------------------
+def save_run(storage: Storage, scenario_key: str, pipe: PipelineResult) -> int:
+    """Store the run and its per-detector metrics (evaluation view); returns the run id."""
+    result = pipe.sim_result
+    sim, atk = result.config, result.attack
+    config = {"sim": sim.to_dict(), "attack": atk.to_dict(), "detector": pipe.det_cfg.to_dict(),
+              "run_key": run_key(sim, atk, pipe.det_cfg)}
+    summary = {"n_steps": result.n_steps, "n_drones": result.n_drones,
+               "pattern": pattern_key(pipe.runs),
+               "attack_onset_SIMULATION": result.attack_onset()}
+    run_id = storage.save_run(scenario_key, sim.seed, sim.config_hash(), config, summary)
+    rows = []
+    for run in [*pipe.runs, pipe.fusion.as_detection_run()]:
+        m = compute_metrics(result, run)
+        rows.append({"detector": run.short, "detected": m.detected, "delay": m.detection_delay,
+                     "false_alarms": len(m.false_alarm_drones), "id_precision": m.id_precision,
+                     "id_recall": m.id_recall})
+    storage.save_detection_summary(run_id, rows)
+    return run_id
+
+
+def open_incident(
+    pipe: PipelineResult,
+    scenario_key: str,
+    storage: Storage,
+    day: date | None = None,
+) -> tuple[Incident, bool]:
+    """Open (or reuse) the incident for this run. Returns (incident, newly_opened).
+
+    If an incident with the same run_key exists it is returned unchanged
+    (same inputs give identical output, R2). Otherwise the run and its
+    metrics are saved, the next id "SG-YYYYMMDD-NNN" is taken and the
+    incident is stored. The caller decides whether an incident is warranted
+    (see should_open_incident).
+    """
+    sim = pipe.sim_result.config
+    key = run_key(sim, pipe.sim_result.attack, pipe.det_cfg)
+    existing = storage.find_incident_by_run_key(key)
+    if existing is not None:
+        return Incident.from_dict(existing), False
+    run_id = save_run(storage, scenario_key, pipe)
+    today = day or datetime.now(timezone.utc).date()
+    incident_id = make_incident_id(today, storage.next_incident_number(today))
+    incident = from_run(pipe, scenario_key, incident_id, calibration_hash_for(sim))
+    storage.save_incident(incident.to_dict(), run_id)
+    return incident, True
