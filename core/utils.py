@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -173,3 +174,17 @@ def round_half_up(x: float) -> int:
     which is surprising when choosing e.g. how many drones carry anchors.
     """
     return int(math.floor(x + 0.5))
+
+
+def drone_label(index: int) -> str:
+    """0-based drone index -> display name, e.g. 3 -> "Drone 04".
+
+    WHY here: the CLI, the explainer and the PDF report all name drones the
+    same way; one shared helper keeps them consistent.
+    """
+    return f"Drone {int(index) + 1:02d}"
+
+
+def format_drones(drones: Iterable[int]) -> str:
+    """Indices -> "Drone 02, Drone 06" (sorted), or "none" if empty."""
+    return ", ".join(drone_label(i) for i in sorted(drones)) or "none"

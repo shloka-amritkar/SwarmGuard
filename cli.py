@@ -8,6 +8,9 @@ Usage:
     python cli.py sweep --param magnitude --scenario single_hijack --seeds 50 --workers 4
     python cli.py evasion --scenario slow_drift [--seeds 40] [--max-delay 10] [--workers 4]
     python cli.py propagation --scenario clean_baseline [--magnitude 6]
+    python cli.py investigate --scenario rigid_swarm_shift [--seed 5000] [--force]
+    python cli.py verify data/packages/SG-20261105-001.zip
+    python cli.py tamper-test data/packages/SG-20261105-001 --file detections.csv [--byte 100]
 
 All numbers printed are simulation results, not measurements of real drones.
 """
@@ -18,6 +21,7 @@ import argparse
 import logging
 import sys
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 
 import matplotlib
@@ -29,26 +33,26 @@ import matplotlib.pyplot as plt  # noqa: E402  (must come after matplotlib.use)
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from analysis.calibration import calibrate, load_calibration, save_calibration  # noqa: E402
+from analysis.calibration import calibrate, load_calibration, load_or_default, save_calibration  # noqa: E402
 from analysis.evasion_search import stealth_envelope  # noqa: E402
-from analysis.experiments import builtin_values, run_pipeline, sweep  # noqa: E402
+from analysis.experiments import PipelineResult, builtin_values, run_pipeline, sweep  # noqa: E402
 from analysis.experiments import summarise as summarise_sweep  # noqa: E402
 from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
 from analysis.propagation import propagation_study  # noqa: E402
 from attacks.scenarios import Scenario, get_scenario, list_scenarios  # noqa: E402
 from config import DetectorConfig  # noqa: E402
 from core.schema import SimResult  # noqa: E402
+from core.utils import drone_label  # noqa: E402
+from database.storage import DEFAULT_DB_PATH, Storage  # noqa: E402
 from detection.fusion import describe_pattern, pattern_key  # noqa: E402
+from forensics.evidence_package import VerificationReport, build_package, tamper_test, verify_package  # noqa: E402
+from forensics.incident import calibration_hash_for, from_run, make_incident_id, should_open_incident  # noqa: E402
+from reports.pdf_report import trajectory_figure  # noqa: E402
 from simulation.swarm import simulate  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 PLOT_DIR = Path("data") / "plots"
-
-
-def drone_label(index: int) -> str:
-    """0-based index -> display name, e.g. 3 -> "Drone 04"."""
-    return f"Drone {index + 1:02d}"
 
 
 def summarise(result: SimResult) -> dict[str, str]:
@@ -299,6 +303,100 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------
+# Phase 4: investigation, verification, tamper test
+# --------------------------------------------------------------------------
+def _save_run(storage: Storage, scenario: Scenario, pipe: PipelineResult) -> int:
+    """Store the run and its per-detector metrics (evaluation view); returns the run id."""
+    result = pipe.sim_result
+    config = {"sim": scenario.sim.to_dict(), "attack": scenario.attack.to_dict(),
+              "detector": pipe.det_cfg.to_dict()}
+    run_id = storage.save_run(scenario.key, scenario.sim.seed, scenario.sim.config_hash(),
+                              config, summarise(result))
+    rows = []
+    for run in pipe.all_runs():
+        m = compute_metrics(result, run)
+        rows.append({"detector": run.short, "detected": m.detected, "delay": m.detection_delay,
+                     "false_alarms": len(m.false_alarm_drones), "id_precision": m.id_precision,
+                     "id_recall": m.id_recall})
+    storage.save_detection_summary(run_id, rows)
+    return run_id
+
+
+def cmd_investigate(args: argparse.Namespace) -> int:
+    """Run, detect, fuse, recover; open an incident and build its signed evidence package."""
+    scenario = get_scenario(args.scenario, seed=args.seed, centre_gain=args.centre_gain)
+    pipe = run_pipeline(scenario.sim, scenario.attack, load_or_default(scenario.sim))
+    print(f"Scenario: {scenario.title} ({scenario.key}), seed {scenario.sim.seed}")
+    if not should_open_incident(pipe.runs) and not args.force:
+        print("Simulation result: no anomaly detected; no incident opened (use --force to open one).")
+        return 0
+    storage = Storage(args.db)
+    run_id = _save_run(storage, scenario, pipe)
+    today = datetime.now(timezone.utc).date()
+    incident_id = make_incident_id(today, storage.next_incident_number(today))
+    incident = from_run(pipe, scenario.key, incident_id, calibration_hash_for(scenario.sim))
+    storage.save_incident(incident.to_dict(), run_id)
+    paths = build_package(incident, pipe.sim_result, pipe.all_runs(), pipe.fusion.to_dataframe(),
+                          {"trajectories": trajectory_figure(pipe.sim_result)},
+                          out_root=args.out, storage=storage, keys_dir=args.keys)
+    print(f"Incident {incident_id} opened (pattern {incident.pattern}).")
+    print("Explanation (simulation result):")
+    for sentence in incident.explanation:
+        print(f"  {sentence}")
+    print(f"Package folder:         {paths.folder}")
+    print(f"Package zip:            {paths.zip_path}")
+    print(f"PDF report:             {paths.report}")
+    print(f"Manifest SHA-256:       {paths.manifest_sha256}")
+    print(f"Previous manifest hash: {paths.previous_manifest_hash}")
+    return 0
+
+
+def _print_report(report: VerificationReport, indent: str = "  ") -> None:
+    """Print every check as "STATUS  name - detail", then the overall result."""
+    for c in report.checks:
+        print(f"{indent}{c.status:<8}{c.name} - {c.detail}")
+    print(f"{indent}OVERALL: {report.overall}")
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    """Verify a package folder or zip; exit code 0 only if nothing FAILs."""
+    storage = Storage(args.db)
+    report = verify_package(args.path, storage=storage, trusted_key=Path(args.keys) / "public_key.pem")
+    print(f"Verifying {args.path} (incident {report.incident_id})")
+    _print_report(report)
+    entry = storage.custody_entry(report.incident_id) if report.incident_id else None
+    if entry is not None and report.manifest_sha256:
+        storage.log_custody(report.incident_id, report.manifest_sha256, entry["previous_sha256"],
+                            "verified" if report.overall == "PASS" else "verify_failed")
+    print("A PASS shows the evidence is unchanged since signing; it does not prove the telemetry was genuine.")
+    return 0 if report.overall == "PASS" else 1
+
+
+def cmd_tamper_test(args: argparse.Namespace) -> int:
+    """Flip one bit of one file in a COPY of the package and show that verification fails."""
+    storage = Storage(args.db)
+    trusted = Path(args.keys) / "public_key.pem"
+    result = tamper_test(args.path, args.file, byte_index=args.byte, storage=storage, trusted_key=trusted)
+    print(f"Tamper test on a temporary copy of {args.path}")
+    print(f"  changed {result.target_file} byte {result.byte_index}: "
+          f"0x{result.old_byte:02x} -> 0x{result.new_byte:02x} (one bit flipped)")
+    print(f"  copy before tampering: {result.before.overall}")
+    print("  copy after tampering:")
+    _print_report(result.after, indent="    ")
+    original = verify_package(args.path, storage=storage, trusted_key=trusted)
+    print(f"  original package (never modified): {original.overall}")
+    caught = result.before.overall == "PASS" and result.after.overall == "FAIL" and original.overall == "PASS"
+    print("Tamper detected." if caught else "WARNING: tampering was NOT detected as expected.")
+    return 0 if caught else 1
+
+
+def _add_storage_args(parser: argparse.ArgumentParser) -> None:
+    """--db and --keys options shared by the forensic commands."""
+    parser.add_argument("--db", default=str(DEFAULT_DB_PATH), help="SQLite database path")
+    parser.add_argument("--keys", default="keys", help="folder holding the Ed25519 key pair")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the argument parser with its subcommands."""
     parser = argparse.ArgumentParser(prog="swarmguard", description="SwarmGuard command line")
@@ -353,6 +451,28 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--magnitude", type=float, default=6.0, help="spoof size in metres")
     pr.add_argument("--seed", type=int, default=5000, help="seed for both runs")
     pr.set_defaults(func=cmd_propagation)
+
+    inv = sub.add_parser("investigate", help="open an incident and build a signed evidence package")
+    inv.add_argument("--scenario", required=True, help="scenario key (see list-scenarios)")
+    inv.add_argument("--seed", type=int, default=None, help="override the scenario seed")
+    inv.add_argument("--centre-gain", type=float, default=None, dest="centre_gain",
+                     help="override closed-loop centre_gain")
+    inv.add_argument("--force", action="store_true", help="open an incident even if nothing alarmed")
+    inv.add_argument("--out", default=str(Path("data") / "packages"), help="package output folder")
+    _add_storage_args(inv)
+    inv.set_defaults(func=cmd_investigate)
+
+    ver = sub.add_parser("verify", help="verify an evidence package (folder or zip)")
+    ver.add_argument("path", help="package folder or .zip")
+    _add_storage_args(ver)
+    ver.set_defaults(func=cmd_verify)
+
+    tam = sub.add_parser("tamper-test", help="flip one bit in a COPY of a package and re-verify")
+    tam.add_argument("path", help="package folder or .zip (never modified)")
+    tam.add_argument("--file", required=True, help="file inside the package, e.g. detections.csv")
+    tam.add_argument("--byte", type=int, default=None, help="byte index to flip (default: random, seed 0)")
+    _add_storage_args(tam)
+    tam.set_defaults(func=cmd_tamper_test)
     return parser
 
 

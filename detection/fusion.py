@@ -80,7 +80,8 @@ PATTERN_DESCRIPTIONS: dict[str, str] = {
     "A_C_silent_B_alarm": "Motion inconsistency only: possibly a slow drift on drones without "
                           "anchor coverage, or a false alarm.",
     "C_silent_A_B_alarm": "Individual drone(s) disagree with neighbours and with their own "
-                          "motion; the affected drones carry no anchor.",
+                          "motion. Detector C did not alarm: the affected drones may carry no "
+                          "anchor, or C's readings never persisted long enough.",
     "A_B_C_alarm": "All three detectors disagree with GPS on at least one drone.",
 }
 
