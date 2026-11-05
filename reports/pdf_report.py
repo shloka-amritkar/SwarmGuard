@@ -12,8 +12,10 @@ LAYOUT (top to bottom)
     8 limitations and disclaimer
 Every page has a header and footer with the incident id and page number.
 
-STYLE: white paper (printable), black outlines, deep-red headings, blush
-table headers. All colours come from core/palette.py (PALETTE), the same
+STYLE: white paper (printable), black outlines, forest (brand) headings,
+neutral line-colour table headers; red appears ONLY for alarms (fused-alarm
+bars, attacked drones). Lavender is the app's button colour and is not used
+in print. All colours come from core/palette.py (PALETTE), the same
 module the Streamlit app uses, so the report always matches the app.
 Fonts: ReportLab's built-in Helvetica and Courier (always available, no
 font files to ship; the spec allows Helvetica as the fallback).
@@ -69,7 +71,6 @@ PAGE_W, PAGE_H = A4
 MARGIN = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN
 OUTLINE_W = 1.2          # points; the PDF version of the app's thick outline
-DETECTOR_COLOURS = {"A": PALETTE.ink, "B": PALETTE.red, "C": PALETTE.muted, "F": PALETTE.red_hover}
 TIMELINE_CAPTION = (
     "Each row is one detector on one drone; bars show when it was in ALARM. A = relative geometry, "
     "B = motion consistency, C = absolute anchors, F = fused alarm. The dashed line is the estimated onset."
@@ -125,7 +126,7 @@ def timeline_figure(runs: Sequence[DetectionRun], onset: float | None) -> Figure
         times = run.times()
         dt = float(times[1] - times[0]) if len(times) > 1 else 0.1
         ax.broken_barh(_segments(run.flags()[:, i], times, dt), (y - 0.35, 0.7),
-                       facecolors=DETECTOR_COLOURS.get(run.short, PALETTE.ink))
+                       facecolors=PALETTE.detector_colour(run.short))
     ax.set_yticks(range(len(rows)))
     ax.set_yticklabels([f"{r.short} | {drone_label(i)}" for r, i in rows], fontsize=7)
     ax.invert_yaxis()
@@ -139,7 +140,7 @@ def timeline_figure(runs: Sequence[DetectionRun], onset: float | None) -> Figure
     for spine in ax.spines.values():
         spine.set_color(PALETTE.ink)
         spine.set_linewidth(1.5)
-    ax.grid(axis="x", color=PALETTE.blush, lw=0.6)
+    ax.grid(axis="x", color=PALETTE.line, lw=0.6)
     fig.tight_layout()
     return fig
 
@@ -155,16 +156,16 @@ def trajectory_figure(result: SimResult) -> Figure:
     attacked = result.attacked_drones()
     fig, ax = plt.subplots(figsize=(8.0, 6.0), dpi=150)
     for i in range(result.n_drones):
-        colour = PALETTE.red if i in attacked else PALETTE.ink
+        colour = PALETTE.status_alarm if i in attacked else PALETTE.ink
         ax.plot(true_pos[:, i, 0], true_pos[:, i, 1], "-", color=colour, lw=1.0)
         ax.plot(gps[:, i, 0], gps[:, i, 1], ":", color=colour, lw=0.7)
     ax.plot([], [], "-", color=PALETTE.ink, label="true path (SIMULATION GROUND TRUTH)")
     ax.plot([], [], ":", color=PALETTE.ink, label="reported GPS")
-    ax.plot([], [], "-", color=PALETTE.red, label="drone attacked in the simulation")
+    ax.plot([], [], "-", color=PALETTE.status_alarm, label="drone attacked in the simulation")
     ax.set_xlabel("East (m)")
     ax.set_ylabel("North (m)")
     ax.set_aspect("equal", adjustable="datalim")
-    ax.grid(color=PALETTE.blush, lw=0.6)
+    ax.grid(color=PALETTE.line, lw=0.6)
     ax.legend(loc="best", fontsize=7, edgecolor=PALETTE.ink)
     ax.set_title("Flight paths (simulation result)", fontsize=10, color=PALETTE.ink)
     for spine in ax.spines.values():
@@ -180,14 +181,14 @@ def trajectory_figure(result: SimResult) -> Figure:
 def _styles() -> dict[str, ParagraphStyle]:
     """Paragraph styles in the app palette (Helvetica family)."""
     base = getSampleStyleSheet()
-    ink, red = _c(PALETTE.ink), _c(PALETTE.red)
+    ink, brand = _c(PALETTE.ink), _c(PALETTE.forest)
     return {
         "title": ParagraphStyle("title", parent=base["Title"], fontName="Helvetica-Bold",
-                                fontSize=40, leading=44, textColor=red, alignment=TA_CENTER),
+                                fontSize=40, leading=44, textColor=brand, alignment=TA_CENTER),
         "cover": ParagraphStyle("cover", parent=base["Normal"], fontName="Helvetica-Bold",
                                 fontSize=14, leading=20, textColor=ink, alignment=TA_CENTER),
         "h1": ParagraphStyle("h1", parent=base["Heading1"], fontName="Helvetica-Bold",
-                             fontSize=15, leading=19, textColor=red, spaceBefore=10, spaceAfter=6),
+                             fontSize=15, leading=19, textColor=brand, spaceBefore=10, spaceAfter=6),
         "body": ParagraphStyle("body", parent=base["Normal"], fontName="Helvetica",
                                fontSize=9.5, leading=13, textColor=ink, spaceAfter=4),
         "cell": ParagraphStyle("cell", parent=base["Normal"], fontName="Helvetica",
@@ -199,7 +200,7 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 def _table(data: list[list[Any]], widths: list[float], st: dict[str, ParagraphStyle],
            mono_cols: Sequence[int] = ()) -> Table:
-    """A table with a blush header row and black grid lines (cells wrap)."""
+    """A table with a neutral (line-colour) header row and black grid lines (cells wrap)."""
     def cell(value: Any, col: int, header: bool) -> Paragraph:
         text = escape("-" if value is None else str(value))
         style = st["mono"] if (col in mono_cols and not header) else st["cell"]
@@ -208,7 +209,7 @@ def _table(data: list[list[Any]], widths: list[float], st: dict[str, ParagraphSt
     body = [[cell(v, c, r == 0) for c, v in enumerate(row)] for r, row in enumerate(data)]
     table = Table(body, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), _c(PALETTE.blush)),
+        ("BACKGROUND", (0, 0), (-1, 0), _c(PALETTE.line)),
         ("GRID", (0, 0), (-1, -1), 0.6, _c(PALETTE.ink)),
         ("BOX", (0, 0), (-1, -1), OUTLINE_W, _c(PALETTE.ink)),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -224,10 +225,10 @@ def _fmt(value: Any, spec: str = ".2f", unit: str = "") -> str:
 
 
 def _header_footer(incident_id: str):  # noqa: ANN202 (ReportLab callback type)
-    """Page decoration: red rule + id at the top, page number at the bottom."""
+    """Page decoration: forest rule + id at the top, page number at the bottom."""
     def draw(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        canvas.setStrokeColor(_c(PALETTE.red))
+        canvas.setStrokeColor(_c(PALETTE.forest))
         canvas.setLineWidth(2)
         canvas.line(MARGIN, PAGE_H - 12 * mm, PAGE_W - MARGIN, PAGE_H - 12 * mm)
         canvas.setFont("Helvetica-Bold", 8)

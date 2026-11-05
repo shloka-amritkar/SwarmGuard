@@ -30,18 +30,35 @@ tamper_test():     copy ─► flip one bit ─► verify the copy ─► FAIL (
 
 ## 0. `core/palette.py`: one place for colours
 
-The PDF must look like the app, and the app's colours may still change
-before Phase 5. So every colour lives in one frozen dataclass, `PALETTE`:
-cream `#F4F1EA`, ink `#111111`, deep red `#C8221B`, blush `#F4B6B2`, muted
-`#8A8577`, and the status colours. The PDF and its matplotlib figures read
-`PALETTE.red` and the other names. `ui/theme.py` will import the same module
-in Phase 5. Change a hex value here and the app, the PDF and the figures all
-follow.
+The PDF must look like the app, and the app's colours may still change.
+So every colour lives in one frozen dataclass, `PALETTE`. This paid off
+straight away: at the start of Phase 5 the design moved from a red "poster"
+style to "Ivory + Console", and the PDF followed by changing only this file.
+
+Colour roles in the current palette:
+- **forest** `#0B4D40`: the one brand colour. PDF headings, the cover title
+  and the header rule use it.
+- **lavender** `#E6DDFE`: the app's button colour. It is not used in print.
+- **red** `#C8221B` (`status_alarm`): ONLY alarms. In the PDF that means
+  the fused-alarm bars and the drones the simulation attacked.
+- **line** `#E4E1D3`: neutral table header rows and figure gridlines.
+- **ivory, ink, muted, the console colours, and the fixed status and
+  detector colours** (A blue, B teal, C ochre, D violet).
+
+`PALETTE.detector_colour("B")` and `PALETTE.status_colour("alarm")` look
+colours up by meaning. `ui/theme.py` re-exports the same object for the
+Streamlit app, so there is one source of truth.
+
+**Contrast.** `contrast_ratio()` implements the WCAG formula. Tests check
+that every text colour pair reaches 4.5:1 (ink on ivory is 18.6:1, muted on
+ivory 4.55:1). The status colours fail as text on white (SUSPICIOUS is
+2.3:1), so status text is always ink on a tinted fill, and the status colour
+goes on the border, dot or bar.
 
 **Why in `core/` and not `ui/`?** The PDF is built from the command line.
 Importing `ui/` would drag Streamlit in. `core/` has no UI dependencies.
 
-`frozen=True` means `PALETTE.red = "..."` raises an error, so no code can
+`frozen=True` means `PALETTE.forest = "..."` raises an error, so no code can
 quietly change a colour while the program runs.
 
 ---
@@ -354,12 +371,13 @@ same way. The CLI now imports it from there; its behaviour is unchanged.
 
 ---
 
-## 9. Tests (`tests/test_phase4.py`, 20 checks)
+## 9. Tests (`tests/test_phase4.py`, 31 checks)
 
 All tests write to pytest's `tmp_path`, so the real `data/` and `keys/`
 folders are never touched. They cover:
 
-- **Palette:** its values, and that it cannot be changed (frozen).
+- **Palette:** its values, detector colours, that it cannot be changed
+  (frozen), and WCAG AA contrast for every text colour pair (10 cases).
 - **Hashing:** key order does not matter, chunked hashing matches whole-file
   hashing, and the known SHA-256 of the empty string.
 - **Signatures:** sign and verify round trip; a changed message or a flipped

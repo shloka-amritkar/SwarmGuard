@@ -17,7 +17,7 @@ import pytest
 from analysis.calibration import load_or_default
 from analysis.experiments import PipelineResult, run_pipeline
 from attacks.scenarios import get_scenario
-from core.palette import PALETTE, hex_to_rgb01
+from core.palette import PALETTE, WCAG_AA_TEXT, contrast_ratio, hex_to_rgb01
 from database.storage import GENESIS, Storage
 from forensics.evidence_package import (
     FAIL,
@@ -88,13 +88,34 @@ def _package(tmp_path: Path, pipe: PipelineResult, incident: Incident, storage: 
 # Palette
 # --------------------------------------------------------------------------
 def test_palette_values_and_conversion() -> None:
-    assert PALETTE.red == "#C8221B"
+    assert PALETTE.forest == "#0B4D40" and PALETTE.ivory == "#FFFEF2"
+    assert PALETTE.status_alarm == "#C8221B"
     assert hex_to_rgb01("#FFFFFF") == (1.0, 1.0, 1.0)
-    assert PALETTE.status_colour("compromised") == PALETTE.red
+    assert PALETTE.status_colour("compromised") == PALETTE.status_alarm
+    assert PALETTE.detector_colour("B") == "#0CA5A5"
+    assert PALETTE.detector_colour("F") == PALETTE.status_alarm
+    with pytest.raises(ValueError):
+        PALETTE.detector_colour("Z")
     with pytest.raises(ValueError):
         hex_to_rgb01("red")
     with pytest.raises(Exception):
-        PALETTE.red = "#000000"  # type: ignore[misc]  (frozen dataclass)
+        PALETTE.forest = "#000000"  # type: ignore[misc]  (frozen dataclass)
+
+
+@pytest.mark.parametrize("fg, bg", [
+    ("ink", "ivory"), ("ink_2", "ivory"), ("muted", "ivory"), ("forest", "ivory"),
+    ("ink", "lavender"), ("console_tx", "console"), ("console_mu", "console"),
+    ("console_mu", "console_2"), ("mint", "console"), ("paper", "status_alarm"),
+])
+def test_text_colours_meet_wcag_aa(fg: str, bg: str) -> None:
+    """Every colour pair used for text reaches the WCAG AA ratio of 4.5:1."""
+    assert contrast_ratio(getattr(PALETTE, fg), getattr(PALETTE, bg)) >= WCAG_AA_TEXT
+
+
+def test_status_colours_are_not_text_colours() -> None:
+    """Documents WHY status text is ink on a tint: the status colours fail AA as text."""
+    assert contrast_ratio(PALETTE.status_suspicious, PALETTE.paper) < WCAG_AA_TEXT
+    assert contrast_ratio(PALETTE.ink, PALETTE.paper) > 18
 
 
 # --------------------------------------------------------------------------
