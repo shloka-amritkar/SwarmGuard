@@ -33,14 +33,19 @@ def filtered_rows() -> list[dict[str, Any]]:
             and (scenario == "all" or r["scenario"] == scenario)]
 
 
+def _num(value: Any, digits: int) -> str:
+    """Number -> fixed decimals; missing -> "-" (never "None" on screen)."""
+    return "-" if value is None else f"{float(value):.{digits}f}"
+
+
 def detector_details(incident: dict[str, Any]) -> pd.DataFrame:
     """One row per detector from the stored incident."""
     rows = []
     for short, d in sorted(incident["detected"].items()):
         rows.append({"detector": f"{short} · {d.get('name', short)}", "state": d["state"].replace("_", " "),
-                     "first alarm (s)": d.get("first_alarm_t"),
+                     "first alarm (s)": _num(d.get("first_alarm_t"), 1),
                      "drones": format_drones(d["drones"]) if d.get("drones") else "-",
-                     "peak score": d.get("peak_score"), "threshold": d.get("threshold")})
+                     "peak score": _num(d.get("peak_score"), 2), "threshold": _num(d.get("threshold"), 2)})
     return pd.DataFrame(rows)
 
 

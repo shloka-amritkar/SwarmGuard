@@ -371,3 +371,43 @@ def test_attack_lab_invalid_settings_are_friendly(fresh_app) -> None:
     at.multiselect(key="lab-single_hijack-tn").set_value([]).run()
     assert not at.exception
     assert any("cannot be simulated" in e.value for e in at.error)
+
+
+# --------------------------------------------------------------------------
+# Step 3: regressions found while checking the app in a real browser
+# --------------------------------------------------------------------------
+def test_graphics_reach_st_html_as_images_not_inline_svg() -> None:
+    """st.html strips <svg>; every graphic must arrive as an <img> with an SVG data URI."""
+    from ui.components import empty_state_html, feature_card_html, navbar_html
+
+    checks = [Check("manifest", "PASS", "ok"), Check("file a.csv", "FAIL", "hash differs"),
+              Check("chain", "UNKNOWN", "-")]
+    for markup in (feature_card_html("radar", "Detect", "body"), empty_state_html("Nothing yet."),
+                   verification_table_html(checks), wordmark_html(), navbar_html("Home", None, None, None)):
+        assert "<svg" not in markup
+        assert 'src="data:image/svg+xml;base64,' in markup
+    table = verification_table_html(checks)
+    assert "sg-check" in table and "sg-cross" in table and "sg-dash" in table
+
+
+def test_svg_img_validates_and_escapes() -> None:
+    from assets.stickers import svg_img, sticker_img
+
+    img = sticker_img("radar", size=40, label='a "quoted" label')
+    assert img.startswith("<img") and 'alt="a &quot;quoted&quot; label"' in img
+    assert 'aria-hidden="true"' in svg_img("<svg/>", 10)      # decorative icons are hidden
+    with pytest.raises(ValueError):
+        svg_img("<svg/>", 0)
+
+
+@pytest.mark.parametrize("extent", [30.0, 115.0, 600.0])
+def test_map_zoom_fits_the_flight(extent: float) -> None:
+    """MapLibre (512 px tiles): metres per pixel = 78271.52 cos(lat) / 2^zoom."""
+    import math
+
+    zoom = plots._zoom_for(extent, plots.LAT0, pixels=400)
+    mpp = 78271.52 * math.cos(math.radians(plots.LAT0)) / 2 ** zoom
+    assert extent / mpp <= 400                        # the whole flight is on screen
+    assert extent * 1.3 / mpp == pytest.approx(400, rel=1e-6)   # with a 30 % margin, no more
+    with pytest.raises(ValueError):
+        plots._zoom_for(extent, plots.LAT0, pixels=0)

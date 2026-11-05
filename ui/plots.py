@@ -78,7 +78,7 @@ def _template(bg: str, text: str, line: str, grid: str, tick: str, neutral: str,
         xaxis=_axis(line, grid, tick, dashed), yaxis=_axis(line, grid, tick, dashed),
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0,
                 "bgcolor": TRANSPARENT, "font": {"color": text, "size": 12}},
-        margin={"l": 8, "r": 8, "t": 36, "b": 8},
+        margin={"l": 16, "r": 20, "t": 40, "b": 16},
         hoverlabel={"bgcolor": P.paper, "bordercolor": P.ink,
                     "font": {"family": FONT_SANS, "color": P.ink, "size": 12}},
         transition={"duration": 300, "easing": "cubic-in-out"},
@@ -123,13 +123,19 @@ def status_colour(verdict: str) -> str:
 # --------------------------------------------------------------------------
 # Swarm map
 # --------------------------------------------------------------------------
-def _zoom_for(extent_m: float, lat: float) -> float:
-    """Map zoom so that extent_m (plus margin) fits about 640 px.
+def _zoom_for(extent_m: float, lat: float, pixels: float = 440.0) -> float:
+    """Map zoom so that extent_m (plus a 30 % margin) fits in `pixels` screen pixels.
 
-        metres per pixel at zoom z = 156543.03 * cos(lat) / 2^z
+        metres per pixel at zoom z = 78271.52 * cos(lat) / 2^z
+
+    WHY 78271.52 (not the familiar 156543.03): Plotly's map uses MapLibre,
+    whose tiles are 512 px wide, so zoom 0 shows the equator at half the
+    metres per pixel of the classic 256 px tiles.
     """
-    mpp = max(extent_m, 30.0) * 1.5 / 640.0
-    return float(np.clip(math.log2(156543.03 * math.cos(math.radians(lat)) / mpp), 10.0, 20.0))
+    if pixels <= 0:
+        raise ValueError(f"pixels must be > 0, got {pixels}")
+    mpp = max(extent_m, 30.0) * 1.3 / pixels
+    return float(np.clip(math.log2(78271.52 * math.cos(math.radians(lat)) / mpp), 10.0, 20.0))
 
 
 def _nearest_links(pos: np.ndarray, k: int = 2) -> tuple[list[float | None], list[float | None]]:
@@ -332,9 +338,15 @@ def swarm_map(
         buttons, slider = _animation_controls(labels)
         fig.update_layout(updatemenus=buttons, sliders=slider)
     gps = result.stack("gps_pos")
-    centre = gps.reshape(-1, 2).mean(axis=0)
-    extent = float(np.ptp(gps.reshape(-1, 2), axis=0).max())
+    # WHY the bounding-box middle (not the mean): the camera must show the
+    # whole flight, and a mean is pulled towards where the swarm lingered.
+    points = gps.reshape(-1, 2)
+    centre = (points.min(axis=0) + points.max(axis=0)) / 2.0
+    extent = float(np.ptp(points, axis=0).max())
+    # WHY explicit colours: the map always sits in a console panel, so its
+    # paper (behind the play controls) must match the panel, not the page.
     fig.update_layout(template=CONSOLE, height=height, showlegend=False,
+                      paper_bgcolor=P.console, plot_bgcolor=P.console,
                       margin={"l": 0, "r": 0, "t": 0, "b": 64 if len(steps) > 1 else 0})
     if offline:
         fig.update_xaxes(title="East (m)", scaleanchor="y", scaleratio=1)
@@ -342,7 +354,7 @@ def swarm_map(
     else:
         lat, lon = enu_to_latlon(float(centre[0]), float(centre[1]))
         fig.update_layout(map={"style": MAP_STYLE, "center": {"lat": float(lat), "lon": float(lon)},
-                               "zoom": _zoom_for(extent, LAT0)})
+                               "zoom": _zoom_for(extent, LAT0, pixels=max(height - 80, 200))})
     return fig
 
 

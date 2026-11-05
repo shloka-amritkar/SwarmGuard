@@ -56,8 +56,11 @@ a:hover { color: var(--sg-forest-2); }
   border-radius: 999px;
   margin: 12px auto 0 auto;
   padding: 4px 8px;
-  width: fit-content;
-  max-width: calc(100vw - 32px);
+  /* WHY a definite width: Streamlit measures the nav to decide how many
+     sections fit; fit-content made that measurement circular, so it
+     sometimes collapsed to "Operations + 6 more". */
+  width: min(520px, calc(100vw - 32px));
+  justify-content: center;
   box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
 }
 
@@ -101,6 +104,34 @@ a:hover { color: var(--sg-forest-2); }
 [data-testid="stTopNavLink"][aria-current="page"]::after,
 [data-testid="stTopNavLink"][aria-selected="true"]::after {
   transform: scaleX(1);
+}
+
+/* Links inside the section menus (desktop) and the sidebar (phones):
+   lavender = the interaction colour, forest text = the brand colour. */
+[data-testid="stTopNavDropdownLink"],
+[data-testid="stSidebarNavLink"] {
+  border-radius: var(--sg-radius-input);
+  transition: background var(--sg-dur-hover) var(--sg-ease);
+}
+
+[data-testid="stTopNavDropdownLink"]:hover,
+[data-testid="stSidebarNavLink"]:hover { background: var(--sg-ivory); }
+
+[data-testid="stTopNavDropdownLink"][aria-current="page"],
+[data-testid="stSidebarNavLink"][aria-current="page"] {
+  background: var(--sg-lavender);
+  box-shadow: inset 0 0 0 1.5px var(--sg-ink);
+}
+
+[data-testid="stTopNavDropdownLink"][aria-current="page"] p,
+[data-testid="stSidebarNavLink"][aria-current="page"] span {
+  color: var(--sg-forest);
+  font-weight: 600;
+}
+
+[data-testid="stSidebar"] {
+  background: var(--sg-paper);
+  border-right: var(--sg-outline-card) solid var(--sg-ink);
 }
 
 [data-testid="stTopNavPopover"],
@@ -367,9 +398,13 @@ code, pre, kbd, .sg-mono {
   transform: none;
 }
 
-/* Secondary buttons (type="secondary", the Streamlit default): paper fill. */
-[data-testid="stBaseButton-secondary"] { background: var(--sg-paper); }
-[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-ivory); }
+/* Secondary buttons (type="secondary", the Streamlit default): paper fill.
+   WHY the long selector: ".stButton > button" above is more specific than a
+   bare [data-testid] selector, so the type has to be added to it. */
+.stButton > button[data-testid="stBaseButton-secondary"],
+.stDownloadButton > button[data-testid="stBaseButton-secondary"] { background: var(--sg-paper); }
+.stButton > button[data-testid="stBaseButton-secondary"]:hover,
+.stDownloadButton > button[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-ivory); }
 
 /* Tertiary buttons read as text links. */
 [data-testid="stBaseButton-tertiary"] {
@@ -461,6 +496,18 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
 }
 
 /* Sliders: forest track and an outlined thumb. */
+/* Streamlit 1.66 builds sliders with React Aria: the group holds a track
+   whose first child is the rail and whose [data-rac] child is the thumb. */
+[data-testid="stSlider"] [role="group"] > div > div:first-child {
+  box-shadow: inset 0 0 0 1px var(--sg-line);   /* the unfilled rail stays visible on paper */
+  border-radius: 999px;
+}
+
+[data-testid="stSlider"] [role="group"] > div > div[data-rac] {
+  border-radius: 50%;
+}
+
+[data-testid="stSlider"] [role="group"] > div > div[data-rac],
 [data-testid="stSlider"] [role="slider"] {
   background: var(--sg-paper);
   border: var(--sg-outline-button) solid var(--sg-ink);
@@ -470,7 +517,8 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
   transition: transform var(--sg-dur-hover) var(--sg-ease);
 }
 
-[data-testid="stSlider"] [role="slider"]:hover { transform: scale(1.1); }
+[data-testid="stSlider"] [role="group"] > div > div[data-rac]:hover,
+[data-testid="stSlider"] [role="slider"]:hover { transform: translate(-50%, -50%) scale(1.1); }
 
 [data-testid="stSliderThumbValue"] {
   font-family: var(--sg-font-mono);
@@ -528,7 +576,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   background: var(--sg-paper);
   border: var(--sg-outline-card) solid var(--sg-ink);
   border-radius: var(--sg-radius-card);
-  padding: 8px 8px 4px 8px;
+  /* WHY no padding: Streamlit sizes this box to the figure's exact height,
+     so padding pushed the axis titles out of view. The figure's own
+     margins (ui/plots.py) provide the breathing room instead. */
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Charts and iframes inside console panels take the panel colour instead. */
@@ -688,6 +740,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 [class*="st-key-sg-console"] small { color: var(--sg-console-mu); }
 
 /* Widgets inside console panels keep their tactile look but on the dark panel. */
+[class*="st-key-sg-console"] [data-testid="stSlider"] [role="group"] > div > div[data-rac],
 [class*="st-key-sg-console"] [data-testid="stSlider"] [role="slider"] {
   background: var(--sg-mint);
   border-color: var(--sg-console-tx);
@@ -846,7 +899,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 .sg-feed__row {
   display: grid;
-  grid-template-columns: 74px 12px 1fr;
+  grid-template-columns: 84px 12px 1fr;
   align-items: start;
   gap: 10px;
   padding: 9px 10px;
@@ -860,7 +913,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 .sg-feed__row:nth-child(4) { animation-delay: 120ms; }
 .sg-feed__row:nth-child(n+5) { animation-delay: 160ms; }
 
-.sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-console-mu); }
+.sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-console-mu); white-space: nowrap; }
 
 .sg-feed__dot {
   width: 9px;
@@ -986,27 +1039,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 .sg-verify .sg-verify__name { font-family: var(--sg-font-mono); font-size: 13px; }
 .sg-verify .sg-verify__detail { color: var(--sg-console-mu); font-size: 13px; }
 
-/* PASS: the check mark draws itself. */
-.sg-check path {
-  stroke: var(--sg-status-normal);
-  stroke-width: 3;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 30;
-  stroke-dashoffset: 30;
+/* PASS: the check mark draws itself (a left-to-right wipe over the icon).
+   WHY a wipe on an <img>: st.html removes inline <svg>, so icons are SVG
+   images; the page CSS can still animate how much of the image is shown. */
+.sg-icon { display: block; }
+
+.sg-check {
+  clip-path: inset(0 100% 0 0);
   animation: sg-draw var(--sg-dur-draw) var(--sg-ease) forwards;
 }
 
-.sg-verify tr:nth-child(2) .sg-check path { animation-delay: 60ms; }
-.sg-verify tr:nth-child(3) .sg-check path { animation-delay: 120ms; }
-.sg-verify tr:nth-child(4) .sg-check path { animation-delay: 180ms; }
-.sg-verify tr:nth-child(n+5) .sg-check path { animation-delay: 240ms; }
+.sg-verify tr:nth-child(2) .sg-check { animation-delay: 60ms; }
+.sg-verify tr:nth-child(3) .sg-check { animation-delay: 120ms; }
+.sg-verify tr:nth-child(4) .sg-check { animation-delay: 180ms; }
+.sg-verify tr:nth-child(n+5) .sg-check { animation-delay: 240ms; }
 
-@keyframes sg-draw { to { stroke-dashoffset: 0; } }
-
-.sg-cross path { stroke: var(--sg-status-alarm); stroke-width: 3; stroke-linecap: round; fill: none; }
-.sg-dash path { stroke: var(--sg-status-suspicious); stroke-width: 3; stroke-linecap: round; fill: none; }
+@keyframes sg-draw { to { clip-path: inset(0 0 0 0); } }
 
 /* FAIL: the row shakes once and turns red-tinted. */
 .sg-verify tr.sg-verify--fail td {
@@ -1036,7 +1084,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   .sg-page-title { font-size: 32px; }
   .sg-kpi__value { font-size: 32px; }
   [data-testid="stTopNav"] { border-radius: var(--sg-radius-card); }
-  .sg-feed__row { grid-template-columns: 64px 12px 1fr; }
+  .sg-feed__row { grid-template-columns: 80px 12px 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -1060,5 +1108,5 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   .sg-card--feature:hover,
   [class*="st-key-sg-card"]:hover { transform: none; }
   .sg-ribbon__track { animation: none; }
-  .sg-check path { stroke-dashoffset: 0; }
+  .sg-check { clip-path: none; }
 }

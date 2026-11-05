@@ -67,7 +67,10 @@ def calibration_tab() -> None:
             table[col] = table[col].map(lambda v: f"{v:.1%}")
         st.caption(f"Simulation result · {result.n_seeds} clean runs (seeds {result.seed_start}-"
                    f"{result.seed_end}) · target {result.target_fa:.1%} · created {result.created_utc}")
-        st.dataframe(table, hide_index=True, width="stretch")
+        st.dataframe(table, hide_index=True, width="stretch", column_config={
+            "detector": "Detector", "thresholds": "Calibrated thresholds",
+            "false_alarm_runs": "Runs with a false alarm", "runs": "Clean runs",
+            "fa_rate": "False-alarm rate", "ci_low": "95 % CI low", "ci_high": "95 % CI high"})
         chosen = {"A": result.thresholds.tau_a, "C": result.thresholds.tau_c}
         c.chart(plots.calibration_curve(result.curves, result.target_fa, chosen), key="exp-cal-curve")
         for note in result.notes:

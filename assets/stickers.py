@@ -19,6 +19,7 @@ without looking messy; larger angles would.
 
 from __future__ import annotations
 
+import base64
 import html
 import logging
 
@@ -169,3 +170,31 @@ def sticker(name: str, size: int = 72, rotate: float = 0.0, label: str | None = 
 def drone_mark(size: int = 22) -> str:
     """The small line-art drone used in the SwarmGuard wordmark."""
     return sticker("drone_top", size=size, label="SwarmGuard")
+
+
+def svg_img(svg: str, size: int, alt: str = "", css_class: str = "sg-icon") -> str:
+    """Wrap an SVG string as an <img> with a base64 data URI.
+
+    WHY: Streamlit's st.html sanitises markup and removes inline <svg>, but
+    keeps <img> tags with data: URIs. The picture is identical; only the
+    page can no longer restyle its strokes (colours are set inside the SVG).
+    """
+    if size <= 0:
+        raise ValueError(f"size must be > 0, got {size}")
+    data = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    alt_attr = html.escape(alt, quote=True)
+    hidden = "" if alt else ' aria-hidden="true"'
+    return (f'<img class="{html.escape(css_class, quote=True)}" src="data:image/svg+xml;base64,{data}" '
+            f'width="{size}" height="{size}" alt="{alt_attr}"{hidden}>')
+
+
+def sticker_img(name: str, size: int = 72, rotate: float = 0.0, label: str | None = None) -> str:
+    """sticker() as an <img> that survives st.html (see svg_img)."""
+    svg = sticker(name, size=size, rotate=rotate, label=label)
+    alt = label if label is not None else name.replace("_", " ")
+    return svg_img(svg, size, alt, "sg-sticker")
+
+
+def drone_mark_img(size: int = 22) -> str:
+    """drone_mark() as an <img> (the wordmark's small drone)."""
+    return svg_img(drone_mark(size), size, "", "sg-sticker sg-wordmark__mark")

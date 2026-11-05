@@ -10,7 +10,10 @@ wrappers stay tiny. All text is passed through html.escape(), so a drone
 name or a file path can never inject markup.
 
 WHY st.html and not st.markdown: markdown treats indentation and blank
-lines specially and can break raw HTML; st.html inserts it as written.
+lines specially and its own paragraph styles override ours; st.html
+inserts markup as written. st.html does remove inline <svg>, so every
+graphic (stickers, the drone mark, the verify icons) is embedded as an
+<img> with an SVG data URI instead (assets/stickers.py, svg_img).
 
 Widgets cannot live inside a raw HTML <div>, so cards and console panels
 that contain buttons, sliders or charts use st.container(key="sg-...").
@@ -33,10 +36,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from assets.stickers import drone_mark, sticker
+from assets.stickers import drone_mark_img, sticker_img, svg_img
 from analysis.experiments import PipelineResult
 from ui.state import QUICK_START, Event, get_or_run_pipeline, run_scenario
-from ui.theme import DETECTOR_NAMES, status_label, status_tone
+from ui.theme import DETECTOR_NAMES, PALETTE, status_label, status_tone
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +68,7 @@ def detector_pill_html(short: str, text: str | None = None) -> str:
 
 def wordmark_html(size: int = 22) -> str:
     """Line-art drone + "SWARM" (Inter 300, spaced) + "GUARD" (Bricolage 800)."""
-    return (f'<span class="sg-wordmark" aria-label="SwarmGuard">{drone_mark(size)}'
+    return (f'<span class="sg-wordmark" aria-label="SwarmGuard">{drone_mark_img(size)}'
             f'<span class="sg-wordmark__swarm">SWARM</span><span class="sg-wordmark__guard">GUARD</span></span>')
 
 
@@ -225,9 +228,17 @@ def drone_inspector_html(data: dict[str, Any]) -> str:
     )
 
 
-_CHECK_SVG = '<svg class="sg-check" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17.5 L19 7"/></svg>'
-_CROSS_SVG = '<svg class="sg-cross" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>'
-_DASH_SVG = '<svg class="sg-dash" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12 H18"/></svg>'
+def _icon(path_d: str, colour: str, css_class: str) -> str:
+    """A 22 px stroke icon as an <img> (colours from the palette, never typed in)."""
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">'
+           f'<path d="{path_d}" fill="none" stroke="{colour}" stroke-width="3" '
+           f'stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    return svg_img(svg, 22, "", f"sg-icon {css_class}")
+
+
+_CHECK_SVG = _icon("M5 12.5 L10 17.5 L19 7", PALETTE.status_normal, "sg-check")
+_CROSS_SVG = _icon("M6 6 L18 18 M18 6 L6 18", PALETTE.status_alarm, "sg-cross")
+_DASH_SVG = _icon("M6 12 H18", PALETTE.status_suspicious, "sg-dash")
 
 
 def verification_table_html(checks: Sequence[Any]) -> str:
@@ -253,13 +264,13 @@ def legend_html(items: Sequence[tuple[str, str]]) -> str:
 def feature_card_html(sticker_name: str, title: str, body: str, rotate: float = 0.0) -> str:
     """Feature card (hard shadow, hover lift) with a sticker, title and two lines of copy."""
     return (f'<div class="sg-card sg-card--feature"><span class="sg-card__sticker">'
-            f'{sticker(sticker_name, size=64, rotate=rotate)}</span>'
+            f'{sticker_img(sticker_name, size=64, rotate=rotate)}</span>'
             f'<p class="sg-card__title">{_E(title)}</p><p class="sg-card__body">{_E(body)}</p></div>')
 
 
 def empty_state_html(message: str, sticker_name: str = "radar") -> str:
     """Sticker + one sentence (the button is added by empty_state)."""
-    return (f'<div class="sg-empty">{sticker(sticker_name, size=88, rotate=-3)}'
+    return (f'<div class="sg-empty">{sticker_img(sticker_name, size=88, rotate=-3)}'
             f'<p class="sg-empty__text">{_E(message)}</p></div>')
 
 
@@ -273,34 +284,34 @@ def html_block(markup: str) -> None:
 
 def eyebrow(text: str) -> None:
     """Eyebrow label."""
-    st.html(eyebrow_html(text))
+    html_block(eyebrow_html(text))
 
 
 def page_header(title: str, italic: str | None = None, eyebrow: str | None = None,
                 caption: str | None = None) -> None:
     """Serif page title block."""
-    st.html(page_header_html(title, italic, eyebrow, caption))
+    html_block(page_header_html(title, italic, eyebrow, caption))
 
 
 def section(title: str, caption: str | None = None, eyebrow: str | None = None,
             anchor: str | None = None) -> None:
     """Section heading."""
-    st.html(section_html(title, caption, eyebrow, anchor))
+    html_block(section_html(title, caption, eyebrow, anchor))
 
 
 def status_pill(status: str, label: str | None = None) -> None:
     """Status pill on its own line."""
-    st.html(status_pill_html(status, label))
+    html_block(status_pill_html(status, label))
 
 
 def kpi_card(label: str, value: int | float | str, status: str | None = None, delta: str | None = None) -> None:
     """One KPI card."""
-    st.html(kpi_card_html(label, value, status, delta))
+    html_block(kpi_card_html(label, value, status, delta))
 
 
 def kpi_row(items: Sequence[KPI]) -> None:
     """A row of KPI cards (stacks on narrow screens)."""
-    st.html(kpi_row_html(items))
+    html_block(kpi_row_html(items))
 
 
 def navbar(active_page: str) -> None:
@@ -317,7 +328,7 @@ def navbar(active_page: str) -> None:
     scenario = st.session_state.get("scenario_key")
     seed = st.session_state.get("seed")
     tag = f"{scenario} · seed {seed}" if scenario else None
-    st.html(navbar_html(active_page, status, text, tag))
+    html_block(navbar_html(active_page, status, text, tag))
 
 
 def console_panel(title: str, body_fn: Callable[[], None], key: str | None = None,
@@ -329,24 +340,24 @@ def console_panel(title: str, body_fn: Callable[[], None], key: str | None = Non
     """
     with st.container(key=f"sg-console-{key or _slug(title)}"):
         live_html = f'<span class="sg-console__live">{_E(live)}</span>' if live else ""
-        st.html(f'<div class="sg-console__head"><p class="sg-console__title">{_E(title)}</p>{live_html}</div>')
+        html_block(f'<div class="sg-console__head"><p class="sg-console__title">{_E(title)}</p>{live_html}</div>')
         body_fn()
 
 
 def event_feed(events: Sequence[Event], key: str = "feed", limit: int = 12) -> None:
     """Event feed inside a console panel."""
-    console_panel("Event feed", lambda: st.html(event_feed_html(events, limit)), key=key,
+    console_panel("Event feed", lambda: html_block(event_feed_html(events, limit)), key=key,
                   live=f"{len(events)} events")
 
 
 def ribbon(events: Sequence[Event], seconds: float = 90.0) -> None:
     """Slow scrolling ribbon of recent events."""
-    st.html(ribbon_html(events, seconds))
+    html_block(ribbon_html(events, seconds))
 
 
 def pattern_banner(title: str, body: str, tone: str = "alarm") -> None:
     """Pattern banner (tone "alarm" = red bar, anything else = forest bar)."""
-    st.html(pattern_banner_html(title, body, tone))
+    html_block(pattern_banner_html(title, body, tone))
 
 
 def drone_table(rows: pd.DataFrame, key: str | None = None) -> None:
@@ -360,16 +371,21 @@ def drone_table(rows: pd.DataFrame, key: str | None = None) -> None:
         "B_cusum": st.column_config.NumberColumn("B CUSUM", format="%.1f"),
         "B_nis": st.column_config.NumberColumn("B NIS", format="%.1f"),
         "C": st.column_config.TextColumn("C status"),
-        "C_residual_m": st.column_config.NumberColumn("C residual (m)", format="%.2f"),
+        "C_residual_m": st.column_config.TextColumn("C residual (m)"),
         "verdict": st.column_config.TextColumn("Fused verdict"),
         "belief": st.column_config.ProgressColumn("Belief", min_value=0.0, max_value=1.0, format="%.2f"),
     }
-    st.dataframe(rows, hide_index=True, column_config=config, width="stretch", key=key)
+    # WHY text for C: a drone without an anchor reading has no residual; the
+    # table says "no reading" instead of a blank or "None" (rule R4).
+    shown = rows.copy()
+    if "C_residual_m" in shown:
+        shown["C_residual_m"] = shown["C_residual_m"].map(lambda v: "no reading" if pd.isna(v) else f"{v:.2f}")
+    st.dataframe(shown, hide_index=True, column_config=config, width="stretch", key=key)
 
 
 def drone_inspector(data: dict[str, Any]) -> None:
     """Drone Inspector card."""
-    st.html(drone_inspector_html(data))
+    html_block(drone_inspector_html(data))
 
 
 def scenario_card(key: str, title: str, description: str, expected: dict[str, str],
@@ -381,7 +397,7 @@ def scenario_card(key: str, title: str, description: str, expected: dict[str, st
     with st.container(key=f"sg-card-{_slug(key)}"):
         pills = "".join(detector_pill_html(d, f"{d} · {o}") for d, o in sorted(expected.items()))
         pills = pills or status_pill_html("none", "No attack")
-        st.html(f'{sticker(sticker_name, size=56, rotate=-2)}<p class="sg-card__title">{_E(title)}</p>'
+        html_block(f'{sticker_img(sticker_name, size=56, rotate=-2)}<p class="sg-card__title">{_E(title)}</p>'
                 f'<p class="sg-card__body">{_E(description)}</p>'
                 f'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">{pills}</div>')
         return st.button(button_label, key=f"run-{_slug(key)}", width="stretch")
@@ -389,13 +405,13 @@ def scenario_card(key: str, title: str, description: str, expected: dict[str, st
 
 def verification_table(checks: Sequence[Any], key: str = "verify") -> None:
     """Verification results inside a console panel (draw-on checks, shake on FAIL)."""
-    console_panel("Verification", lambda: st.html(verification_table_html(checks)), key=key)
+    console_panel("Verification", lambda: html_block(verification_table_html(checks)), key=key)
 
 
 def empty_state(message: str, action_label: str | None = None, sticker_name: str = "radar",
                 key: str = "empty") -> bool:
     """Sticker + one sentence + (optionally) one button. Returns True if the button was pressed."""
-    st.html(empty_state_html(message, sticker_name))
+    html_block(empty_state_html(message, sticker_name))
     if action_label is None:
         return False
     left, mid, right = st.columns([1, 1, 1])

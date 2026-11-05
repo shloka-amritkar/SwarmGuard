@@ -12,6 +12,7 @@ labelled as evaluation.
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -51,7 +52,8 @@ def summary_kpis(pipe: PipelineResult) -> None:
 def repairs_table(repairs: dict[int, RepairResult]) -> pd.DataFrame:
     """One row per flagged drone: status, neighbours used, residual RMS (no truth)."""
     rows = [{"drone": drone_label(i), "status": r.status.value.replace("_", " ").upper(),
-             "neighbours used": len(r.neighbours), "residual RMS (m)": r.residual_rms}
+             "neighbours used": len(r.neighbours),
+             "residual RMS (m)": "-" if np.isnan(r.residual_rms) else f"{r.residual_rms:.2f}"}
             for i, r in sorted(repairs.items())]
     return pd.DataFrame(rows, columns=["drone", "status", "neighbours used", "residual RMS (m)"])
 
@@ -62,9 +64,11 @@ def evaluation_table(pipe: PipelineResult, k: int, repairs: dict[int, RepairResu
               "never sees.", eyebrow="Evaluation view")
     df = recovery_error(pipe.sim_result.frames[k], repairs)
     df["drone"] = df["drone"].map(drone_label)
+    df["status"] = df["status"].str.replace("_", " ").str.upper()
+    df["gps_error_m"] = df["gps_error_m"].map(lambda v: f"{v:.2f}")
+    df["repaired_error_m"] = df["repaired_error_m"].map(lambda v: "not repaired" if np.isnan(v) else f"{v:.2f}")
     st.dataframe(df, hide_index=True, width="stretch", column_config={
-        "gps_error_m": st.column_config.NumberColumn("GPS error (m)", format="%.2f"),
-        "repaired_error_m": st.column_config.NumberColumn("Repaired error (m)", format="%.2f")})
+        "gps_error_m": "GPS error (m)", "repaired_error_m": "Repaired error (m)"})
 
 
 def main() -> None:
@@ -104,7 +108,12 @@ def main() -> None:
         c.html_block('<p class="sg-card__body">No drone is flagged at this time, so nothing needs repair.</p>')
         return
     st.dataframe(repairs_table(repairs), hide_index=True, width="stretch")
-    if any(r.status == RecoveryStatus.INSUFFICIENT_NEIGHBOURS for r in repairs.values()):
+    n = pipe.sim_result.n_drones
+    if len(repairs) == n:
+        st.info("Every drone is flagged, so no drone is trusted as a reference and multilateration "
+                "cannot run (fix F1 forbids using flagged neighbours). This is typical of a swarm-wide "
+                "attack; the MDS + RANSAC estimate and attack vector above are the recovery for it.")
+    elif any(r.status == RecoveryStatus.INSUFFICIENT_NEIGHBOURS for r in repairs.values()):
         st.info("INSUFFICIENT NEIGHBOURS: fewer than three trusted neighbours with a radio range, "
                 "so that drone's position cannot be fixed by multilateration.")
     evaluation_table(pipe, k, repairs)

@@ -137,13 +137,14 @@ def lists() -> None:
     c.section("Blind-spot table", "What each detector is expected to do per preset attack: detect, "
               "blind (mathematically cannot see it) or partial (depends on anchors / persistence).")
     st.dataframe(blind_spot_table(), hide_index=True, width="stretch")
+    # WHY lists, not tables: these are sentences, and a table cell cuts them off.
     left, right = st.columns(2)
     with left:
         c.section("Fixes over prior work")
-        st.dataframe(pd.DataFrame(FIXES, columns=["fix", "what"]), hide_index=True, width="stretch")
+        st.markdown("\n".join(f"- **{k}** {v}" for k, v in FIXES))
     with right:
         c.section("Design decisions")
-        st.dataframe(pd.DataFrame(DECISIONS, columns=["decision", "what"]), hide_index=True, width="stretch")
+        st.markdown("\n".join(f"- **{k}** {v}" for k, v in DECISIONS))
     c.section("Credits", "Concepts only; all code was written independently.")
     st.dataframe(pd.DataFrame(CREDITS, columns=["work", "authors", "concepts used"]), hide_index=True,
                  width="stretch")
