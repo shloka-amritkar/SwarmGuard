@@ -67,27 +67,46 @@ TECH STACK (do not add others without saying why)
 
 UI DIRECTION (full specification in docs/phases/phase-5.md, which wins on
 any conflict)
-  Neo-brutalist retro "poster" style: confident and handmade, never
-  generic. Warm cream page (#F4F1EA) with white cards, thick black outlines
-  (2.5px #111111), and hard offset shadows with no blur (5px 5px 0 on cards,
-  4px 4px 0 on buttons; buttons lift on hover and press into their shadow
-  on click). Deep red accent (#C8221B, hover #9E1A14) for hero bands and
-  the single primary action per screen; blush (#F4B6B2) for giant
-  background lettering and soft fills.
-  Fonts: Bricolage Grotesque 800 (titles and headings), DM Serif Display
-  (ONLY the giant background lettering on Home), Inter (UI text) and
-  JetBrains Mono (numbers, coordinates, hashes, IDs).
-  The Home page is the playful poster: textured red hero, SVG line-art
-  stickers (drones, radar, satellites, shields, padlocks, sparkles; no
-  faces), and a checkerboard band. Analysis pages use the same visual
-  language but calmer: no stickers in chart areas, generous white space,
-  charts readable first. The Pune map is light (carto-positron), with a
-  dark night map for the light-show scenario.
-  Banned: emojis, visible colour gradients, glows, glassmorphism, blurred
-  shadows, default Streamlit or Plotly looks, and colours outside the
-  palette. (The checkerboard uses CSS repeating-conic-gradient only to draw
-  hard-edged squares; that is allowed.) Status is always colour plus a text
-  label. All visual constants live in ui/theme.py.
+  "Ivory + Console": a calm, premium security product. Style references:
+  Wispr Flow (ivory canvas, deep green brand, lavender buttons, serif
+  headline with an italic second line, eyebrow labels, floating pill
+  navbar, flowing motion) and Urban Macaw's STYLE only (tactile outlined
+  buttons with hard offset shadows, crisp outlined cards, bold numerals,
+  thick-outlined line art). Never their imagery.
+  Colour roles: ivory page (#FFFEF2) with white paper cards; ink #111111
+  for text, outlines and hard shadows; forest #0B4D40 is the ONE brand
+  colour (links, active nav, key headings); lavender #E6DDFE is the ONE
+  interaction colour (primary buttons, selected states); red #C8221B ONLY
+  for alarms and destructive actions (tamper test). Operational content
+  (live map, telemetry, event feed, evidence verification) sits in dark
+  green-black CONSOLE PANELS (#0E1F1B, mint #7FD8B8 for paths) inside the
+  light page. Fixed status and detector colours (A blue, B teal, C ochre,
+  D violet). Status is always colour PLUS a text label; status text is
+  ink on a tinted fill, never the status colour itself (contrast).
+  Fonts: Instrument Serif (page titles, hero; italic for emphasis),
+  Bricolage Grotesque 600-800 (KPI numbers, card titles, section labels),
+  Inter (body, menus, tables, buttons), JetBrains Mono (coordinates,
+  hashes, IDs, timestamps).
+  Shapes: outlines 1.5px ink on cards, 2px on buttons and inputs; radius
+  16px cards, 10px buttons/inputs, 999px pills; hard shadows with no blur
+  (buttons 3px 3px 0, feature cards 4px 4px 0, dense data cards none;
+  console panels 1px border, no shadow). 8px grid, 24px gutters, max width
+  1360px.
+  Motion: quick and calm (90ms press, 140ms hover, 240ms entrances, 400ms
+  count-up/draw). Buttons lift on hover, press into their shadow on click,
+  with a CSS-only ripple. Per-page entrance fade, KPI count-up, draw-on
+  PASS check, one shake on FAIL. Looping motion only in the Home hero.
+  Everything stops under prefers-reduced-motion.
+  Graphics: inline SVG line-art stickers (technical subjects, no faces) on
+  Home, scenario cards, empty states and section headers; never in charts.
+  The swarm map is always carto-darkmatter over Pune inside a console panel.
+  Banned: neon, glows, purple/pink "cyber" gradients, glassmorphism,
+  blurred shadows, rainbow palettes, emojis, red for anything but alarms
+  or destructive actions, default Streamlit or Plotly looks, cartoon
+  faces, distracting looped motion outside the Home hero.
+  ONE source of truth for colours: core/palette.py (shared with the PDF
+  report). ui/theme.py re-exports it and holds the non-colour tokens
+  (fonts, radii, outlines, shadows, motion).
 
 GLOBAL RULES (apply to every phase)
 R1 GROUND-TRUTH SEPARATION
@@ -153,7 +172,8 @@ SwarmGuard/
   app.py                      Streamlit router (st.navigation)
   config.py
   cli.py
-  core/        __init__.py, schema.py, utils.py
+  core/        __init__.py, schema.py, utils.py,
+               palette.py (the ONE source of truth for colours)
   simulation/  __init__.py, formation.py, swarm.py, sensors.py
   attacks/     __init__.py, gps_attacks.py, scenarios.py
   detection/   __init__.py, base.py, detector_a_geometry.py,
@@ -166,19 +186,22 @@ SwarmGuard/
                evidence_package.py, explainer.py
   database/    __init__.py, storage.py
   reports/     __init__.py, pdf_report.py
-  ui/          __init__.py, theme.py, components.py, plots.py, state.py
+  ui/          __init__.py, theme.py, components.py, plots.py, state.py,
+               hero.py (renders assets/hero.html in an iframe)
   views/       home.py, dashboard.py, simulator.py, attack_lab.py,
                detection.py, experiments.py, recovery.py, incidents.py,
                evidence.py, methodology.py
                WHY "views" not "pages": Streamlit auto-builds navigation
                from a folder named pages/, which would conflict with our
                custom st.navigation menu.
-  assets/      style.css, stickers.py (inline SVG line-art stickers)
+  assets/      style.css, stickers.py (inline SVG line-art stickers),
+               hero.html (animated Home hero)
   .streamlit/  config.toml
   tests/
   docs/phases/ phase-1.md ... phase-6.md   (build instructions)
   docs/notes/  phase-N-explained.md        (written by you, for the viva)
   docs/design-refs/                        (optional UI screenshots)
+  docs/screenshots/                        (screenshots of every view)
   data/        (gitignored: db, calibration, packages, models)
   keys/        (gitignored)
   requirements.txt, README.md, .gitignore
