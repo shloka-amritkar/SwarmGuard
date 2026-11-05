@@ -12,3 +12,6 @@ keys/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Third-party design reference images must never be published
+docs/design-refs/

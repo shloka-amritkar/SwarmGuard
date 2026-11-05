@@ -4,27 +4,34 @@ Every part of the project that draws something reads its colours from here:
     reports/pdf_report.py   PDF headings, rules, table lines, figure colours
     ui/theme.py             re-exports PALETTE for the Streamlit app's CSS and
                             Plotly templates (it adds no colours of its own)
+    assets/stickers.py      line-art illustrations
 
 WHY one shared module: if each file kept its own hex strings, a palette
 change would need edits in many places and the PDF would silently drift
 away from the app. With one module, changing a value here changes it
-everywhere. (This already paid off once: the design moved from a red
-"poster" style to "Ivory + Console" by editing only this file's values.)
+everywhere. (This paid off twice: the design moved from a red "poster"
+style to "Ivory + Console" and then to "Ground Truth" by editing this file
+and renaming its fields.)
 
 WHY it lives in core/ and not ui/: the PDF code runs from the command line
 and must not import the Streamlit-facing ui package. core/ has no UI
 dependencies, so anything may import it.
 
-COLOUR ROLES ("Ivory + Console", docs/phases/phase-5.md section 5.1)
-    forest    the ONE brand colour (links, active nav, key headings)
-    lavender  the ONE interaction colour (primary buttons, selected states)
-    red       ONLY alarms and destructive actions, so alarms cannot be missed
-    console*  dark green-black panels for map, feed and verification
+COLOUR ROLES ("Ground Truth", docs/phases/phase-7.md section B1)
+    sand / card / vellum   survey paper: page, cards, secondary surfaces
+    espresso               ink: text, outlines and hard shadows
+    olive                  the ONE brand colour (active nav, links, headings)
+    brass                  the ONE action colour (primary buttons)
+    charcoal / char_*      the only dark surfaces: instrument panels
+    amber                  radar sweep, flight trails on panels
+    brick (status_alarm)   the ONLY red, used for alarms and the tamper test
 
-CONTRAST RULE: status colours are too light to be readable as text on white
-(e.g. SUSPICIOUS #E0A100 is only 2.3:1, WCAG AA needs 4.5:1). So status is
-always shown as ink text on a tinted fill, with the status colour on the
-border, dot or bar, never as the text colour itself.
+CONTRAST RULE: status colours are not text colours (SUSPICIOUS amber on
+card is about 2.6:1, WCAG AA needs 4.5:1). Status is shown as espresso text
+on a tinted fill with the status colour on the border, dot or bar.
+The spec's "stone" (#8C8579) is only 3.2:1 on sand, so it is used for
+non-text marks (rulers, disabled, NO_EVIDENCE dots) and the slightly darker
+stone_text (#6B6459, 5.0:1) is used for caption TEXT.
 """
 
 from __future__ import annotations
@@ -42,46 +49,51 @@ class Palette:
     """Named colours as "#RRGGBB" hex strings.
 
     frozen=True: nobody can change a colour at run time by accident
-    (PALETTE.forest = ... raises an error).
+    (PALETTE.olive = ... raises an error).
     """
 
-    # Light page
-    ivory: str = "#FFFEF2"        # page background
-    paper: str = "#FFFFFF"        # cards, and the PDF paper
-    ink: str = "#111111"          # text, outlines, hard shadows
-    ink_2: str = "#3D3D3A"        # secondary text
-    muted: str = "#77756E"        # captions, axis labels
-    line: str = "#E4E1D3"         # hairlines inside cards, gridlines
-    forest: str = "#0B4D40"       # brand colour
-    forest_2: str = "#0F6B58"     # hover state of forest elements
-    lavender: str = "#E6DDFE"     # primary button fill
-    lavender_2: str = "#D7C9FD"   # button hover / pressed, selected states
-    blush: str = "#F4B6B2"        # rare soft highlight (e.g. heatmap middle)
-    # Console panels (dark)
-    console: str = "#0E1F1B"      # panel background
-    console_2: str = "#132A25"    # raised rows inside panels
-    console_ln: str = "#24413A"   # panel borders and gridlines
-    console_tx: str = "#E9F1EC"   # panel text
-    console_mu: str = "#8FA79E"   # panel secondary text
-    mint: str = "#7FD8B8"         # flight paths and positive signals on dark
+    # Paper and ink
+    sand: str = "#F3EEE3"         # page background (survey paper)
+    card: str = "#FBF8F2"         # cards, inputs (warm white, never pure white)
+    vellum: str = "#ECE5D6"       # secondary surfaces, table headers, hover rows
+    espresso: str = "#1E1A16"     # primary text, outlines, hard shadows
+    ink_2: str = "#4A433B"        # secondary text
+    stone: str = "#8C8579"        # ruler marks, disabled, NO_EVIDENCE (not body text)
+    stone_text: str = "#6B6459"   # captions and eyebrows as TEXT (passes AA)
+    rule: str = "#DDD5C4"         # hairlines inside cards
+    contour: str = "#E4DCCB"      # background contour lines and grids
+    # Brand and interaction
+    olive: str = "#3F4F24"        # brand: active nav, links, key headings
+    olive_2: str = "#566B33"      # hover state of olive elements
+    sage: str = "#DCE3CC"         # soft olive tint: selected rows, pills, focus fills
+    brass: str = "#D9A441"        # primary buttons
+    brass_2: str = "#C68F2E"      # button hover / pressed, ripple
+    terracotta: str = "#B5552F"   # secondary accent, used sparingly
+    # Instrument panels (the only dark surfaces)
+    charcoal: str = "#23201C"     # panel background
+    charcoal_2: str = "#2D2924"   # raised rows inside panels
+    char_line: str = "#3B362F"    # panel borders, gridlines, range rings
+    char_text: str = "#EFE8DA"    # panel text
+    char_mute: str = "#A69D8E"    # panel secondary text
+    amber: str = "#F2B24C"        # radar sweep, flight trails, neutral traces on panels
     # Status (always paired with a text label)
-    status_normal: str = "#2F9E6B"
-    status_suspicious: str = "#E0A100"
-    status_alarm: str = "#C8221B"
-    status_no_evidence: str = "#8A8577"
+    status_normal: str = "#5B7F3A"
+    status_suspicious: str = "#D28A1E"
+    status_alarm: str = "#B3261E"     # brick: the only red in the app
+    status_no_evidence: str = "#8C8579"
     # Detectors (fixed everywhere)
-    det_a: str = "#4C6EF5"        # A relative geometry, blue
-    det_b: str = "#0CA5A5"        # B motion consistency, teal
-    det_c: str = "#B7791F"        # C absolute anchors, ochre
-    det_d: str = "#8C6FD8"        # D experimental ML, violet
+    det_a: str = "#4B6E8E"        # A relative geometry, dusty steel
+    det_b: str = "#2F7D6D"        # B motion consistency, deep teal
+    det_c: str = "#B8862B"        # C absolute anchors, ochre
+    det_d: str = "#B5552F"        # D experimental ML, terracotta
 
     def status_colour(self, status: str) -> str:
-        """Colour for a status or verdict string, e.g. "alarm" -> red.
+        """Colour for a status or verdict string, e.g. "alarm" -> brick red.
 
         Accepts DroneStatus values (normal, suspicious, alarm, no_evidence)
         and fused Verdict values (compromised, insufficient_evidence).
-        Unknown strings get the muted colour rather than an error, because a
-        wrong colour is harmless next to its text label.
+        Unknown strings get stone rather than an error, because a wrong
+        colour is harmless next to its text label.
         """
         table = {
             "normal": self.status_normal,
@@ -91,10 +103,10 @@ class Palette:
             "no_evidence": self.status_no_evidence,
             "insufficient_evidence": self.status_no_evidence,
         }
-        return table.get(str(status).lower(), self.muted)
+        return table.get(str(status).lower(), self.stone)
 
     def detector_colour(self, short: str) -> str:
-        """Colour of detector "A", "B", "C" or "D"; "F" (the fused alarm) is alarm red."""
+        """Colour of detector "A", "B", "C" or "D"; "F" (the fused alarm) is brick red."""
         table = {"A": self.det_a, "B": self.det_b, "C": self.det_c, "D": self.det_d,
                  "F": self.status_alarm}
         if short not in table:
@@ -103,7 +115,7 @@ class Palette:
 
 
 def hex_to_rgb01(hex_colour: str) -> tuple[float, float, float]:
-    """"#0B4D40" -> (0.043, 0.302, 0.251): each channel scaled to [0, 1].
+    """"#3F4F24" -> (0.247, 0.310, 0.141): each channel scaled to [0, 1].
 
     WHY: ReportLab and matplotlib both accept 0-1 floats; converting in one
     helper keeps the hex string in Palette the single source of truth.
@@ -136,8 +148,8 @@ def relative_luminance(hex_colour: str) -> float:
 def contrast_ratio(foreground: str, background: str) -> float:
     """WCAG contrast ratio = (L_lighter + 0.05) / (L_darker + 0.05), from 1 to 21.
 
-    WCAG AA requires at least 4.5 for normal text. Example: ink on ivory is
-    about 18.6; muted (#77756E) on ivory is about 4.55, just above the limit.
+    WCAG AA requires at least 4.5 for normal text. Example: espresso on sand
+    is about 14.9; stone_text (#6B6459) on sand is about 5.0.
     """
     light, dark = sorted((relative_luminance(foreground), relative_luminance(background)), reverse=True)
     return (light + 0.05) / (dark + 0.05)

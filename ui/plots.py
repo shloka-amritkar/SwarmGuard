@@ -71,7 +71,7 @@ def _axis(line: str, grid: str, tick: str, dashed: bool) -> dict[str, Any]:
 
 def _template(bg: str, text: str, line: str, grid: str, tick: str, neutral: str, dashed: bool) -> go.layout.Template:
     """Build one Plotly template."""
-    colorway = [neutral, P.det_a, P.det_b, P.det_c, P.det_d, P.forest_2, P.muted]
+    colorway = [neutral, P.det_a, P.det_b, P.det_c, P.det_d, P.olive_2, P.stone_text]
     layout = go.Layout(
         paper_bgcolor=bg, plot_bgcolor=bg, colorway=colorway,
         font={"family": FONT_SANS, "color": text, "size": 13},
@@ -79,8 +79,8 @@ def _template(bg: str, text: str, line: str, grid: str, tick: str, neutral: str,
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "left", "x": 0,
                 "bgcolor": TRANSPARENT, "font": {"color": text, "size": 12}},
         margin={"l": 16, "r": 20, "t": 40, "b": 16},
-        hoverlabel={"bgcolor": P.paper, "bordercolor": P.ink,
-                    "font": {"family": FONT_SANS, "color": P.ink, "size": 12}},
+        hoverlabel={"bgcolor": P.card, "bordercolor": P.espresso,
+                    "font": {"family": FONT_SANS, "color": P.espresso, "size": 12}},
         transition={"duration": 300, "easing": "cubic-in-out"},
         title={"text": ""},
     )
@@ -90,9 +90,9 @@ def _template(bg: str, text: str, line: str, grid: str, tick: str, neutral: str,
 
 def register_templates() -> None:
     """Register both templates with Plotly (safe to call many times)."""
-    pio.templates[LIGHT] = _template(TRANSPARENT, P.ink, P.ink, P.line, P.muted, P.forest, True)
-    pio.templates[CONSOLE] = _template(P.console, P.console_tx, P.console_ln, P.console_ln,
-                                       P.console_mu, P.mint, False)
+    pio.templates[LIGHT] = _template(TRANSPARENT, P.espresso, P.espresso, P.rule, P.stone_text, P.olive, True)
+    pio.templates[CONSOLE] = _template(P.charcoal, P.char_text, P.char_line, P.char_line,
+                                       P.char_mute, P.amber, False)
 
 
 register_templates()
@@ -101,7 +101,7 @@ register_templates()
 def _threshold(fig: go.Figure, y: float, label: str, row: int | None = None, col: int | None = None) -> None:
     """Dashed ink threshold line with a right-aligned label."""
     kwargs: dict[str, Any] = {"row": row, "col": col} if row is not None else {}
-    fig.add_hline(y=y, line={"color": P.ink, "dash": "dash", "width": 1},
+    fig.add_hline(y=y, line={"color": P.espresso, "dash": "dash", "width": 1},
                   annotation_text=label, annotation_position="top right",
                   annotation_font={"size": 11, "color": P.ink_2}, **kwargs)
 
@@ -110,9 +110,9 @@ def _onset(fig: go.Figure, onset: float | None, label: str = "simulation onset")
     """Vertical dotted line at the attack onset (EVALUATION: from the simulation truth)."""
     if onset is None:
         return
-    fig.add_vline(x=onset, line={"color": P.muted, "dash": "dot", "width": 1.2},
+    fig.add_vline(x=onset, line={"color": P.stone_text, "dash": "dot", "width": 1.2},
                   annotation_text=label, annotation_position="top left",
-                  annotation_font={"size": 11, "color": P.muted})
+                  annotation_font={"size": 11, "color": P.stone_text})
 
 
 def status_colour(verdict: str) -> str:
@@ -178,7 +178,7 @@ def _frame_layers(result: SimResult, statuses: np.ndarray, k: int, links: bool, 
     ages = np.repeat(np.arange(hist.shape[0])[:, None], n, axis=1).reshape(-1)
     alpha = 0.08 + 0.55 * (ages + 1) / hist.shape[0]
     layers.append({"kind": "trails", "x": hist[:, :, 0].reshape(-1), "y": hist[:, :, 1].reshape(-1),
-                   "colour": [rgba(P.mint, float(a)) for a in alpha]})
+                   "colour": [rgba(P.amber, float(a)) for a in alpha]})
     if light_show:
         layers.append({"kind": "halo", "x": gps[:, 0], "y": gps[:, 1], "colour": [rgba(c, 0.22) for c in colours]})
     if evaluation:
@@ -217,7 +217,7 @@ def _map_traces(layers: list[dict[str, Any]]) -> list[go.Scattermap]:
         lat, lon = ll(list(layer["x"]), list(layer["y"]))
         kind = layer["kind"]
         if kind in ("links", "truth_links"):
-            colour = rgba(P.mint, 0.2) if kind == "links" else rgba(P.console_tx, 0.45)
+            colour = rgba(P.amber, 0.2) if kind == "links" else rgba(P.char_text, 0.45)
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="lines", line={"color": colour, "width": 1},
                                         hoverinfo="skip", name=kind))
         elif kind == "trails":
@@ -228,18 +228,18 @@ def _map_traces(layers: list[dict[str, Any]]) -> list[go.Scattermap]:
                                         marker={"size": 30, "color": layer["colour"]}))
         elif kind == "truth":
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="truth ring",
-                                        marker={"size": 13, "color": P.console_tx}))
+                                        marker={"size": 13, "color": P.char_text}))
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", name="truth", text=layer["text"],
                                         hovertemplate="%{text}<extra></extra>",
-                                        marker={"size": 9, "color": P.console}))
+                                        marker={"size": 9, "color": P.charcoal}))
         elif kind == "anchors":
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="anchor ring",
-                                        marker={"size": 21, "color": P.mint}))
+                                        marker={"size": 21, "color": P.amber}))
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="anchor gap",
-                                        marker={"size": 17, "color": P.console}))
+                                        marker={"size": 17, "color": P.charcoal}))
         elif kind == "drones":
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", hoverinfo="skip", name="outline",
-                                        marker={"size": 13, "color": P.ivory}))
+                                        marker={"size": 13, "color": P.sand}))
             traces.append(go.Scattermap(lat=lat, lon=lon, mode="markers", name="drones", text=layer["text"],
                                         hovertemplate="%{text}<extra></extra>",
                                         marker={"size": 11, "color": layer["colour"]}))
@@ -253,7 +253,7 @@ def _grid_traces(layers: list[dict[str, Any]]) -> list[go.Scatter]:
         kind, x, y = layer["kind"], list(layer["x"]), list(layer["y"])
         if kind in ("links", "truth_links"):
             traces.append(go.Scatter(x=x, y=y, mode="lines", hoverinfo="skip", name=kind,
-                                     line={"color": rgba(P.mint, 0.2) if kind == "links" else rgba(P.console_tx, 0.5),
+                                     line={"color": rgba(P.amber, 0.2) if kind == "links" else rgba(P.char_text, 0.5),
                                            "width": 1, "dash": "solid" if kind == "links" else "dash"}))
         elif kind == "trails":
             traces.append(go.Scatter(x=x, y=y, mode="markers", hoverinfo="skip", name=kind,
@@ -264,14 +264,14 @@ def _grid_traces(layers: list[dict[str, Any]]) -> list[go.Scatter]:
         elif kind == "truth":
             traces.append(go.Scatter(x=x, y=y, mode="markers", name="truth", text=layer["text"],
                                      hovertemplate="%{text}<extra></extra>",
-                                     marker={"size": 11, "symbol": "circle-open", "color": P.console_tx,
+                                     marker={"size": 11, "symbol": "circle-open", "color": P.char_text,
                                              "line": {"width": 1.5}}))
         elif kind == "drones":
             symbols = ["diamond" if a else "circle" for a in layer["anchored"]]
             traces.append(go.Scatter(x=x, y=y, mode="markers", name="drones", text=layer["text"],
                                      hovertemplate="%{text}<extra></extra>",
                                      marker={"size": 13, "color": layer["colour"], "symbol": symbols,
-                                             "line": {"color": P.ivory, "width": 1}}))
+                                             "line": {"color": P.sand, "width": 1}}))
     return traces
 
 
@@ -281,17 +281,17 @@ def _animation_controls(labels: list[str]) -> tuple[list[dict[str, Any]], list[d
                   "transition": {"duration": 0}, "fromcurrent": True}
     buttons = [{
         "type": "buttons", "direction": "left", "x": 0.0, "y": -0.04, "xanchor": "left", "yanchor": "top",
-        "pad": {"r": 8, "t": 8}, "showactive": False, "bgcolor": P.console_2, "bordercolor": P.console_ln,
-        "font": {"color": P.console_tx, "family": FONT_SANS, "size": 12},
+        "pad": {"r": 8, "t": 8}, "showactive": False, "bgcolor": P.charcoal_2, "bordercolor": P.char_line,
+        "font": {"color": P.char_text, "family": FONT_SANS, "size": 12},
         "buttons": [{"label": "Play", "method": "animate", "args": [None, frame_args]},
                     {"label": "Pause", "method": "animate",
                      "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate"}]}],
     }]
     slider = [{
         "active": 0, "x": 0.16, "y": -0.02, "len": 0.84, "xanchor": "left", "yanchor": "top",
-        "pad": {"t": 4, "b": 4}, "bgcolor": P.console_2, "activebgcolor": P.mint, "bordercolor": P.console_ln,
-        "tickcolor": P.console_ln, "font": {"color": P.console_mu, "family": FONT_MONO, "size": 10},
-        "currentvalue": {"prefix": "t = ", "suffix": " s", "font": {"color": P.mint, "family": FONT_MONO, "size": 12}},
+        "pad": {"t": 4, "b": 4}, "bgcolor": P.charcoal_2, "activebgcolor": P.amber, "bordercolor": P.char_line,
+        "tickcolor": P.char_line, "font": {"color": P.char_mute, "family": FONT_MONO, "size": 10},
+        "currentvalue": {"prefix": "t = ", "suffix": " s", "font": {"color": P.amber, "family": FONT_MONO, "size": 12}},
         "steps": [{"label": lab, "method": "animate",
                    "args": [[lab], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate"}]}
                   for lab in labels],
@@ -346,7 +346,7 @@ def swarm_map(
     # WHY explicit colours: the map always sits in a console panel, so its
     # paper (behind the play controls) must match the panel, not the page.
     fig.update_layout(template=CONSOLE, height=height, showlegend=False,
-                      paper_bgcolor=P.console, plot_bgcolor=P.console,
+                      paper_bgcolor=P.charcoal, plot_bgcolor=P.charcoal,
                       margin={"l": 0, "r": 0, "t": 0, "b": 64 if len(steps) > 1 else 0})
     if offline:
         fig.update_xaxes(title="East (m)", scaleanchor="y", scaleratio=1)
@@ -392,7 +392,7 @@ def detector_timeseries(pipe: PipelineResult, drone: int, onset: float | None = 
     if np.isnan(c).all():
         fig.add_annotation(text="NO EVIDENCE: no anchor readings for this drone", x=0.5, y=0.5,
                            xref="x4 domain", yref="y4 domain", showarrow=False,
-                           font={"color": P.muted, "size": 12})
+                           font={"color": P.stone_text, "size": 12})
     _onset(fig, onset)
     fig.update_yaxes(title_text="A vote share", range=[0, 1.05], row=1, col=1)
     fig.update_yaxes(title_text="B NIS", type="log", row=2, col=1)
@@ -410,8 +410,8 @@ def residual_heatmap(obs: ObservedFrame, tau_a: float) -> go.Figure:
     zmax = max(2.0 * tau_a, float(np.nanmax(residual)) if np.isfinite(residual).any() else 0.0)
     fig = go.Figure(go.Heatmap(
         z=residual, x=names, y=names, zmin=0, zmax=zmax,
-        colorscale=[[0.0, P.paper], [min(tau_a / zmax, 0.99), P.blush], [1.0, P.status_alarm]],
-        colorbar={"title": {"text": "residual (m)", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.ink},
+        colorscale=[[0.0, P.card], [min(tau_a / zmax, 0.99), P.vellum], [1.0, P.status_alarm]],
+        colorbar={"title": {"text": "residual (m)", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.espresso},
         hovertemplate="%{y} to %{x}: %{z:.2f} m<extra></extra>", xgap=1, ygap=1,
     ))
     fig.update_layout(template=LIGHT, height=460)
@@ -425,9 +425,9 @@ def fusion_chart(pipe: PipelineResult, drone: int, onset: float | None = None) -
     t = pipe.fusion.times
     bel, pl = pipe.fusion.belief[:, drone], pipe.fusion.plausibility[:, drone]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=t, y=pl, name="plausibility", line={"color": P.forest, "width": 1.5}))
-    fig.add_trace(go.Scatter(x=t, y=bel, name="belief", fill="tonexty", fillcolor=rgba(P.forest, 0.10),
-                             line={"color": P.ink}))
+    fig.add_trace(go.Scatter(x=t, y=pl, name="plausibility", line={"color": P.olive, "width": 1.5}))
+    fig.add_trace(go.Scatter(x=t, y=bel, name="belief", fill="tonexty", fillcolor=rgba(P.olive, 0.10),
+                             line={"color": P.espresso}))
     _threshold(fig, BELIEF_COMPROMISED, f"compromised if belief >= {BELIEF_COMPROMISED}")
     _threshold(fig, PLAUSIBILITY_NORMAL, f"normal if plausibility < {PLAUSIBILITY_NORMAL}")
     _onset(fig, onset)
@@ -453,7 +453,7 @@ def alarm_timeline(runs: Sequence[DetectionRun], onset: float | None = None,
                      autorange="reversed", showgrid=False)
     if not rows:
         fig.add_annotation(text="No detector alarm in this run", x=0.5, y=0.5, xref="paper", yref="paper",
-                           showarrow=False, font={"color": P.muted})
+                           showarrow=False, font={"color": P.stone_text})
     _onset(fig, onset, onset_label)
     fig.update_xaxes(title="time (s)")
     fig.update_layout(template=LIGHT, height=max(220, 60 + 24 * len(rows)))
@@ -475,10 +475,10 @@ def comparison_bar(summary: pd.DataFrame, value_col: str = "detection_rate") -> 
     err = None
     if lo is not None and hi is not None:
         err = {"type": "data", "symmetric": False, "array": (hi - y).tolist(), "arrayminus": (y - lo).tolist(),
-               "color": P.ink, "thickness": 1.2, "width": 6}
+               "color": P.espresso, "thickness": 1.2, "width": 6}
     colours = [P.detector_colour(d) for d in summary["detector"]]
     fig = go.Figure(go.Bar(x=[DETECTOR_NAMES.get(d, d) for d in summary["detector"]], y=y, error_y=err,
-                           marker={"color": colours, "line": {"color": P.ink, "width": 1.5}},
+                           marker={"color": colours, "line": {"color": P.espresso, "width": 1.5}},
                            hovertemplate="%{x}: %{y:.0%}<extra></extra>"))
     fig.update_yaxes(range=[0, 1.05], tickformat=".0%")
     fig.update_layout(template=LIGHT, height=340, bargap=0.45)
@@ -529,7 +529,7 @@ def stealth_envelope_chart(env: pd.DataFrame) -> go.Figure:
         text = ["not reliably detected" if pd.isna(v) else f"{v:.2f}" for v in g["threshold"]]
         fig.add_trace(go.Bar(x=[DETECTOR_NAMES.get(d, d) for d in g["detector"]], y=g["threshold"].fillna(0),
                              name=f"{target:.0%} detection", text=text, textposition="outside",
-                             marker={"color": colours, "line": {"color": P.ink, "width": 1.5}}))
+                             marker={"color": colours, "line": {"color": P.espresso, "width": 1.5}}))
     param = env["param"].iloc[0] if not env.empty else "parameter"
     fig.update_yaxes(title=f"smallest {param}")
     fig.update_layout(template=LIGHT, height=380, barmode="group", bargap=0.3)
@@ -558,8 +558,8 @@ def propagation_heatmap(matrix: np.ndarray) -> go.Figure:
     """M[i, j] = mean extra displacement of drone j when drone i is spoofed (forest scale)."""
     names = [drone_label(i) for i in range(len(matrix))]
     fig = go.Figure(go.Heatmap(
-        z=matrix, x=names, y=names, colorscale=[[0.0, P.paper], [0.5, P.lavender_2], [1.0, P.forest]],
-        colorbar={"title": {"text": "metres", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.ink},
+        z=matrix, x=names, y=names, colorscale=[[0.0, P.card], [0.5, P.brass_2], [1.0, P.olive]],
+        colorbar={"title": {"text": "metres", "side": "right"}, "outlinewidth": 1, "outlinecolor": P.espresso},
         hovertemplate="spoof %{y} -> %{x} moved %{z:.2f} m<extra></extra>", xgap=1, ygap=1))
     fig.update_yaxes(title="spoofed drone", autorange="reversed", showgrid=False)
     fig.update_xaxes(title="displaced drone", showgrid=False, tickangle=-45)
@@ -571,7 +571,7 @@ def pagerank_bar(influence: np.ndarray) -> go.Figure:
     """Influence (PageRank) per drone, highest first."""
     order = np.argsort(influence)[::-1]
     fig = go.Figure(go.Bar(x=[drone_label(int(i)) for i in order], y=influence[order],
-                           marker={"color": P.forest, "line": {"color": P.ink, "width": 1.5}},
+                           marker={"color": P.olive, "line": {"color": P.espresso, "width": 1.5}},
                            hovertemplate="%{x}: %{y:.3f}<extra></extra>"))
     fig.update_yaxes(title="influence (PageRank)")
     fig.update_layout(template=LIGHT, height=320, bargap=0.35)
@@ -586,7 +586,7 @@ def feature_importance_bar(importances: dict[str, float]) -> go.Figure:
     """
     items = sorted(importances.items(), key=lambda kv: kv[1])
     fig = go.Figure(go.Bar(x=[v for _, v in items], y=[k for k, _ in items], orientation="h",
-                           marker={"color": P.det_d, "line": {"color": P.ink, "width": 1.5}},
+                           marker={"color": P.det_d, "line": {"color": P.espresso, "width": 1.5}},
                            hovertemplate="%{y}: %{x:.3f}<extra></extra>"))
     fig.update_xaxes(title="importance (mean impurity decrease)", rangemode="tozero")
     fig.update_yaxes(showgrid=False, tickfont={"family": FONT_MONO, "size": 12})
@@ -600,9 +600,9 @@ def confusion_chart(confusion: Sequence[Sequence[int]]) -> go.Figure:
     labels = ["no attack", "attacked"]
     fig = go.Figure(go.Heatmap(
         z=z, x=[f"predicted {s}" for s in labels], y=[f"truly {s}" for s in labels],
-        colorscale=[[0.0, P.paper], [1.0, P.lavender_2]], showscale=False, xgap=2, ygap=2,
+        colorscale=[[0.0, P.card], [1.0, P.brass_2]], showscale=False, xgap=2, ygap=2,
         text=[[f"{int(v):,}" for v in row] for row in z], texttemplate="%{text}",
-        textfont={"family": FONT_MONO, "size": 15, "color": P.ink},
+        textfont={"family": FONT_MONO, "size": 15, "color": P.espresso},
         hovertemplate="%{y}, %{x}: %{z:,.0f} rows<extra></extra>"))
     fig.update_yaxes(autorange="reversed", showgrid=False)
     fig.update_xaxes(showgrid=False, side="top")
@@ -629,7 +629,7 @@ def ml_probability_chart(run: DetectionRun, drone: int, onset: float | None = No
 
 def min_separation_chart(times: np.ndarray, separation: np.ndarray, limit: float = 1.0) -> go.Figure:
     """Smallest true distance between any two drones over time, with the near-collision limit."""
-    fig = go.Figure(go.Scatter(x=times, y=separation, name="min separation", line={"color": P.forest}))
+    fig = go.Figure(go.Scatter(x=times, y=separation, name="min separation", line={"color": P.olive}))
     below = separation < limit
     if below.any():
         fig.add_trace(go.Scatter(x=times[below], y=separation[below], mode="markers", name="below limit",
@@ -657,22 +657,22 @@ def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: 
         for i in range(obs.n):
             lx += [gps[i, 0], positions[i, 0], None]
             ly += [gps[i, 1], positions[i, 1], None]
-        fig.add_trace(go.Scatter(x=lx, y=ly, mode="lines", line={"color": P.muted, "width": 1},
+        fig.add_trace(go.Scatter(x=lx, y=ly, mode="lines", line={"color": P.stone_text, "width": 1},
                                  hoverinfo="skip", name="GPS to recovered"))
     fig.add_trace(go.Scatter(x=gps[:, 0], y=gps[:, 1], mode="markers", name="reported GPS", text=names,
-                             marker={"symbol": "circle-open", "size": 11, "color": P.ink, "line": {"width": 1.5}},
+                             marker={"symbol": "circle-open", "size": 11, "color": P.espresso, "line": {"width": 1.5}},
                              hovertemplate="%{text} GPS<extra></extra>"))
     if positions is not None:
         fig.add_trace(go.Scatter(x=positions[:, 0], y=positions[:, 1], mode="markers", name="recovered",
                                  text=names, hovertemplate="%{text} recovered<extra></extra>",
-                                 marker={"size": 10, "color": P.forest, "line": {"color": P.ink, "width": 1}}))
+                                 marker={"size": 10, "color": P.olive, "line": {"color": P.espresso, "width": 1}}))
     anchored = np.flatnonzero(obs.anchor_mask)
     if anchored.size:
         inl = [i for i in anchored if i not in set(outlier_anchors)]
         if inl:
             fig.add_trace(go.Scatter(x=obs.anchor_pos[inl, 0], y=obs.anchor_pos[inl, 1], mode="markers",
                                      name="anchor (inlier)", marker={"symbol": "diamond", "size": 12, "color": P.det_c,
-                                                                     "line": {"color": P.ink, "width": 1}}))
+                                                                     "line": {"color": P.espresso, "width": 1}}))
         if outlier_anchors:
             out = list(outlier_anchors)
             fig.add_trace(go.Scatter(x=obs.anchor_pos[out, 0], y=obs.anchor_pos[out, 1], mode="markers",
@@ -683,8 +683,8 @@ def recovery_map(obs: ObservedFrame, positions: np.ndarray | None, inlier_mask: 
         pts = np.array([repaired[i] for i in ids])
         fig.add_trace(go.Scatter(x=pts[:, 0], y=pts[:, 1], mode="markers", name="multilateration repair",
                                  text=[drone_label(i) for i in ids], hovertemplate="%{text} repaired<extra></extra>",
-                                 marker={"symbol": "square", "size": 10, "color": P.lavender_2,
-                                         "line": {"color": P.ink, "width": 1.5}}))
+                                 marker={"symbol": "square", "size": 10, "color": P.brass_2,
+                                         "line": {"color": P.espresso, "width": 1.5}}))
     if truth is not None:
         fig.add_trace(go.Scatter(x=truth[:, 0], y=truth[:, 1], mode="markers", name="true position (evaluation)",
                                  marker={"symbol": "cross-thin-open", "size": 10, "color": P.ink_2,
@@ -705,10 +705,10 @@ def attack_vector_chart(times: np.ndarray, vectors: np.ndarray, onset: float | N
         raise ValueError(f"vectors must have shape ({len(times)}, 2), got {vectors.shape}")
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=times, y=np.linalg.norm(vectors, axis=1), name="size",
-                             line={"color": P.forest}))
+                             line={"color": P.olive}))
     fig.add_trace(go.Scatter(x=times, y=vectors[:, 0], name="east", line={"color": P.ink_2, "width": 1.5}))
     fig.add_trace(go.Scatter(x=times, y=vectors[:, 1], name="north",
-                             line={"color": P.muted, "width": 1.5, "dash": "dot"}))
+                             line={"color": P.stone_text, "width": 1.5, "dash": "dot"}))
     _onset(fig, onset)
     fig.update_yaxes(title="metres")
     fig.update_xaxes(title="time (s)")
@@ -721,8 +721,8 @@ def attack_vector_chart(times: np.ndarray, vectors: np.ndarray, onset: float | N
 # --------------------------------------------------------------------------
 def architecture_dot() -> str:
     """The processing pipeline as a Graphviz DOT string in palette colours."""
-    node = (f'node [shape=box, style="rounded,filled", fillcolor="{P.paper}", color="{P.ink}", '
-            f'penwidth=1.5, fontname="Inter", fontsize=11, fontcolor="{P.ink}", margin="0.18,0.08"];')
+    node = (f'node [shape=box, style="rounded,filled", fillcolor="{P.card}", color="{P.espresso}", '
+            f'penwidth=1.5, fontname="Inter", fontsize=11, fontcolor="{P.espresso}", margin="0.18,0.08"];')
 
     def det(name: str, label: str, colour: str) -> str:
         """A detector node outlined in its fixed colour."""
@@ -733,13 +733,13 @@ def architecture_dot() -> str:
         node, f'edge [color="{P.ink_2}", arrowsize=0.7, penwidth=1.2];',
         'sim [label="Swarm simulator\\n(truth + sensors)"];',
         'atk [label="Simulated GPS spoof\\n(software offsets)"];',
-        f'obs [label="ObservedFrame\\n(no truth fields)", fillcolor="{P.lavender}"];',
+        f'obs [label="ObservedFrame\\n(no truth fields)", fillcolor="{P.brass}"];',
         det("A", "A  relative geometry", P.det_a), det("B", "B  motion consistency", P.det_b),
         det("C", "C  absolute anchors", P.det_c),
         'rec [label="Recovery\\nMDS + RANSAC"];',
-        f'fus [label="Dempster-Shafer\\nfusion", fillcolor="{P.lavender}"];',
+        f'fus [label="Dempster-Shafer\\nfusion", fillcolor="{P.brass}"];',
         'inc [label="Incident +\\nexplanation"];',
-        f'pkg [label="Signed evidence\\npackage", color="{P.forest}", penwidth=2];',
+        f'pkg [label="Signed evidence\\npackage", color="{P.olive}", penwidth=2];',
         "sim -> obs; atk -> obs; obs -> A; obs -> B; obs -> C; obs -> rec;",
         "A -> fus; B -> fus; C -> fus; rec -> fus; fus -> inc; inc -> pkg;",
         "}",

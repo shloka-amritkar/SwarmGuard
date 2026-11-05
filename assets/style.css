@@ -16,8 +16,8 @@
 
 /* -------------------------------------------------------------- 1 base -- */
 html, body, .stApp, [data-testid="stAppViewContainer"] {
-  background: var(--sg-ivory);
-  color: var(--sg-ink);
+  background: var(--sg-sand);
+  color: var(--sg-espresso);
   font-family: var(--sg-font-sans);
   font-size: var(--sg-size-body);
   line-height: 1.6;
@@ -39,10 +39,10 @@ footer {
   padding: 96px var(--sg-gutter) 72px var(--sg-gutter);
 }
 
-::selection { background: var(--sg-lavender-2); color: var(--sg-ink); }
+::selection { background: var(--sg-brass-2); color: var(--sg-espresso); }
 
-a, a:visited { color: var(--sg-forest); text-underline-offset: 3px; }
-a:hover { color: var(--sg-forest-2); }
+a, a:visited { color: var(--sg-olive); text-underline-offset: 3px; }
+a:hover { color: var(--sg-olive-2); }
 
 /* --------------------------------------------------- 2 floating pill nav -- */
 [data-testid="stHeader"] {
@@ -51,8 +51,8 @@ a:hover { color: var(--sg-forest-2); }
 }
 
 [data-testid="stTopNav"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: 999px;
   margin: 12px auto 0 auto;
   padding: 4px 8px;
@@ -61,7 +61,7 @@ a:hover { color: var(--sg-forest-2); }
      sometimes collapsed to "Operations + 6 more". */
   width: min(520px, calc(100vw - 32px));
   justify-content: center;
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
 }
 
 [data-testid="stTopNavLink"],
@@ -77,8 +77,8 @@ a:hover { color: var(--sg-forest-2); }
 
 [data-testid="stTopNavLink"]:hover,
 [data-testid="stTopNavSection"]:hover {
-  color: var(--sg-forest);
-  background: var(--sg-ivory);
+  color: var(--sg-olive);
+  background: var(--sg-sand);
 }
 
 /* Active link: forest text with an underline that slides in from the centre. */
@@ -90,14 +90,14 @@ a:hover { color: var(--sg-forest-2); }
   bottom: 3px;
   height: 2px;
   border-radius: 2px;
-  background: var(--sg-forest);
+  background: var(--sg-olive);
   transform: scaleX(0);
   transition: transform var(--sg-dur-enter) var(--sg-ease);
 }
 
 [data-testid="stTopNavLink"][aria-current="page"],
 [data-testid="stTopNavLink"][aria-selected="true"] {
-  color: var(--sg-forest);
+  color: var(--sg-olive);
   font-weight: 600;
 }
 
@@ -115,31 +115,31 @@ a:hover { color: var(--sg-forest-2); }
 }
 
 [data-testid="stTopNavDropdownLink"]:hover,
-[data-testid="stSidebarNavLink"]:hover { background: var(--sg-ivory); }
+[data-testid="stSidebarNavLink"]:hover { background: var(--sg-sand); }
 
 [data-testid="stTopNavDropdownLink"][aria-current="page"],
 [data-testid="stSidebarNavLink"][aria-current="page"] {
-  background: var(--sg-lavender);
-  box-shadow: inset 0 0 0 1.5px var(--sg-ink);
+  background: var(--sg-brass);
+  box-shadow: inset 0 0 0 1.5px var(--sg-espresso);
 }
 
 [data-testid="stTopNavDropdownLink"][aria-current="page"] p,
 [data-testid="stSidebarNavLink"][aria-current="page"] span {
-  color: var(--sg-forest);
+  color: var(--sg-olive);
   font-weight: 600;
 }
 
 [data-testid="stSidebar"] {
-  background: var(--sg-paper);
-  border-right: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border-right: var(--sg-outline-card) solid var(--sg-espresso);
 }
 
 [data-testid="stTopNavPopover"],
 [data-testid="stTopNavPopoverBody"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
 }
 
 /* Context bar under the navigation: wordmark, page, status, scenario. */
@@ -151,7 +151,7 @@ a:hover { color: var(--sg-forest-2); }
   flex-wrap: wrap;
   padding-bottom: 16px;
   margin-bottom: 8px;
-  border-bottom: 1px solid var(--sg-line);
+  border-bottom: 1px solid var(--sg-rule);
 }
 
 .sg-topbar__right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -160,7 +160,7 @@ a:hover { color: var(--sg-forest-2); }
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   text-decoration: none;
   line-height: 1;
 }
@@ -183,8 +183,8 @@ a:hover { color: var(--sg-forest-2); }
   font-family: var(--sg-font-mono);
   font-size: 12px;
   color: var(--sg-ink-2);
-  border: 1px solid var(--sg-line);
-  background: var(--sg-paper);
+  border: 1px solid var(--sg-rule);
+  background: var(--sg-card);
   border-radius: 999px;
   padding: 3px 10px;
 }
@@ -194,7 +194,7 @@ h1, h2, h3, h4, h5, h6,
 [data-testid="stMarkdownContainer"] h1,
 [data-testid="stMarkdownContainer"] h2,
 [data-testid="stMarkdownContainer"] h3 {
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   letter-spacing: -0.01em;
 }
 
@@ -220,9 +220,9 @@ code, pre, kbd, .sg-mono {
 }
 
 [data-testid="stMarkdownContainer"] code {
-  background: var(--sg-ivory);
-  color: var(--sg-forest);
-  border: 1px solid var(--sg-line);
+  background: var(--sg-sand);
+  color: var(--sg-olive);
+  border: 1px solid var(--sg-rule);
   border-radius: 6px;
   padding: 1px 6px;
   font-size: 0.9em;
@@ -236,10 +236,10 @@ code, pre, kbd, .sg-mono {
   font-size: var(--sg-size-title);
   line-height: 1.08;
   margin: 6px 0 8px 0;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
 }
 
-.sg-page-title em { font-style: italic; color: var(--sg-forest); }
+.sg-page-title em { font-style: italic; color: var(--sg-olive); }
 
 .sg-page-caption { color: var(--sg-ink-2); max-width: 760px; margin: 0; }
 
@@ -249,7 +249,7 @@ code, pre, kbd, .sg-mono {
   font-size: var(--sg-size-eyebrow);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sg-muted);
+  color: var(--sg-stone-text);
   margin: 0;
 }
 
@@ -262,17 +262,17 @@ code, pre, kbd, .sg-mono {
   font-weight: 700;
   font-size: var(--sg-size-section);
   margin: 4px 0 4px 0;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
 }
 
-.sg-section__caption { color: var(--sg-muted); margin: 0; font-size: 14px; }
+.sg-section__caption { color: var(--sg-stone-text); margin: 0; font-size: 14px; }
 
 .sg-sim-label {
   font-family: var(--sg-font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sg-muted);
+  color: var(--sg-stone-text);
 }
 
 /* Visually hidden but read by screen readers (used by the KPI count-up). */
@@ -315,11 +315,11 @@ code, pre, kbd, .sg-mono {
   font-family: var(--sg-font-sans);
   font-weight: 600;
   font-size: 15px;
-  color: var(--sg-ink);
-  background: var(--sg-lavender);
-  border: var(--sg-outline-button) solid var(--sg-ink);
+  color: var(--sg-espresso);
+  background: var(--sg-brass);
+  border: var(--sg-outline-button) solid var(--sg-espresso);
   border-radius: var(--sg-radius-button);
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
   padding: 8px 18px;
   min-height: 42px;
   transition:
@@ -336,11 +336,11 @@ code, pre, kbd, .sg-mono {
 .stDownloadButton > button:hover,
 .stFormSubmitButton > button:hover,
 .sg-btn:hover {
-  color: var(--sg-ink);
-  border-color: var(--sg-ink);
-  background: var(--sg-lavender-2);
+  color: var(--sg-espresso);
+  border-color: var(--sg-espresso);
+  background: var(--sg-brass-2);
   transform: translate(-1px, -1px);
-  box-shadow: calc(var(--sg-shadow-button) + 1px) calc(var(--sg-shadow-button) + 1px) 0 var(--sg-ink);
+  box-shadow: calc(var(--sg-shadow-button) + 1px) calc(var(--sg-shadow-button) + 1px) 0 var(--sg-espresso);
 }
 
 /* Press into the shadow. */
@@ -349,7 +349,7 @@ code, pre, kbd, .sg-mono {
 .stFormSubmitButton > button:active,
 .sg-btn:active {
   transform: translate(var(--sg-shadow-button), var(--sg-shadow-button));
-  box-shadow: 0 0 0 var(--sg-ink);
+  box-shadow: 0 0 0 var(--sg-espresso);
   transition-duration: var(--sg-dur-press);
 }
 
@@ -365,7 +365,7 @@ code, pre, kbd, .sg-mono {
   width: 220%;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: var(--sg-lavender-2);
+  background: var(--sg-brass-2);
   transform: translate(-50%, -50%) scale(0);
   opacity: 0;
   z-index: -1;
@@ -385,15 +385,15 @@ code, pre, kbd, .sg-mono {
 .stButton > button:focus-visible,
 .stDownloadButton > button:focus-visible,
 .sg-btn:focus-visible {
-  outline: 2px solid var(--sg-forest);
+  outline: 2px solid var(--sg-olive);
   outline-offset: 3px;
 }
 
 .stButton > button:disabled,
 .stDownloadButton > button:disabled {
-  background: var(--sg-ivory);
-  color: var(--sg-muted);
-  border-color: var(--sg-muted);
+  background: var(--sg-sand);
+  color: var(--sg-stone-text);
+  border-color: var(--sg-stone-text);
   box-shadow: none;
   transform: none;
 }
@@ -402,13 +402,13 @@ code, pre, kbd, .sg-mono {
    WHY the long selector: ".stButton > button" above is more specific than a
    bare [data-testid] selector, so the type has to be added to it. */
 .stButton > button[data-testid="stBaseButton-secondary"],
-.stDownloadButton > button[data-testid="stBaseButton-secondary"] { background: var(--sg-paper); }
+.stDownloadButton > button[data-testid="stBaseButton-secondary"] { background: var(--sg-card); }
 .stButton > button[data-testid="stBaseButton-secondary"]:hover,
-.stDownloadButton > button[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-ivory); }
+.stDownloadButton > button[data-testid="stBaseButton-secondary"]:hover { background: var(--sg-sand); }
 
 /* Tertiary buttons read as text links. */
 [data-testid="stBaseButton-tertiary"] {
-  color: var(--sg-forest);
+  color: var(--sg-olive);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -418,19 +418,19 @@ code, pre, kbd, .sg-mono {
    st.container(key="sg-danger-..."). Red fill, white text. */
 [class*="st-key-sg-danger"] .stButton > button {
   background: var(--sg-status-alarm);
-  color: var(--sg-paper);
+  color: var(--sg-card);
 }
 
-[class*="st-key-sg-danger"] .stButton > button p { color: var(--sg-paper); }
+[class*="st-key-sg-danger"] .stButton > button p { color: var(--sg-card); }
 
 [class*="st-key-sg-danger"] .stButton > button:hover {
   background: var(--sg-status-alarm);
-  color: var(--sg-paper);
+  color: var(--sg-card);
   filter: brightness(0.92);
 }
 
 [class*="st-key-sg-danger"] .stButton > button::after {
-  background: var(--sg-ink);
+  background: var(--sg-espresso);
   opacity: 0;
 }
 
@@ -442,8 +442,8 @@ code, pre, kbd, .sg-mono {
 [data-baseweb="select"] > div,
 [data-testid="stNumberInput"] [data-baseweb="input"],
 [data-testid="stDateInput"] [data-baseweb="input"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-button) solid var(--sg-ink) !important;
+  background: var(--sg-card);
+  border: var(--sg-outline-button) solid var(--sg-espresso) !important;
   border-radius: var(--sg-radius-input) !important;
   font-family: var(--sg-font-sans);
   transition: box-shadow var(--sg-dur-hover) var(--sg-ease);
@@ -452,22 +452,22 @@ code, pre, kbd, .sg-mono {
 [data-baseweb="input"]:focus-within,
 [data-baseweb="textarea"]:focus-within,
 [data-baseweb="select"] > div:focus-within {
-  box-shadow: 0 0 0 3px var(--sg-lavender);
+  box-shadow: 0 0 0 3px var(--sg-brass);
 }
 
 [data-baseweb="input"] input,
 [data-baseweb="textarea"] textarea {
   background: transparent;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
 }
 
 [data-testid="stNumberInput"] button {
-  background: var(--sg-paper);
-  color: var(--sg-ink);
-  border-left: 1px solid var(--sg-line);
+  background: var(--sg-card);
+  color: var(--sg-espresso);
+  border-left: 1px solid var(--sg-rule);
 }
 
-[data-testid="stNumberInput"] button:hover { background: var(--sg-lavender); color: var(--sg-ink); }
+[data-testid="stNumberInput"] button:hover { background: var(--sg-brass); color: var(--sg-espresso); }
 
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"] label {
@@ -480,18 +480,18 @@ code, pre, kbd, .sg-mono {
 /* Dropdown menu of selects. */
 [data-baseweb="popover"] ul[role="listbox"],
 [data-baseweb="menu"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
 }
 
 [data-baseweb="menu"] li[aria-selected="true"],
-ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
+ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-brass); }
 
 [data-baseweb="tag"] {
-  background: var(--sg-lavender) !important;
-  color: var(--sg-ink) !important;
-  border: 1px solid var(--sg-ink);
+  background: var(--sg-brass) !important;
+  color: var(--sg-espresso) !important;
+  border: 1px solid var(--sg-espresso);
   border-radius: 999px !important;
 }
 
@@ -499,7 +499,7 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
 /* Streamlit 1.66 builds sliders with React Aria: the group holds a track
    whose first child is the rail and whose [data-rac] child is the thumb. */
 [data-testid="stSlider"] [role="group"] > div > div:first-child {
-  box-shadow: inset 0 0 0 1px var(--sg-line);   /* the unfilled rail stays visible on paper */
+  box-shadow: inset 0 0 0 1px var(--sg-rule);   /* the unfilled rail stays visible on paper */
   border-radius: 999px;
 }
 
@@ -509,9 +509,9 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
 
 [data-testid="stSlider"] [role="group"] > div > div[data-rac],
 [data-testid="stSlider"] [role="slider"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-button) solid var(--sg-ink);
-  box-shadow: 2px 2px 0 var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-button) solid var(--sg-espresso);
+  box-shadow: 2px 2px 0 var(--sg-espresso);
   width: 18px;
   height: 18px;
   transition: transform var(--sg-dur-hover) var(--sg-ease);
@@ -522,11 +522,11 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
 
 [data-testid="stSliderThumbValue"] {
   font-family: var(--sg-font-mono);
-  color: var(--sg-forest);
+  color: var(--sg-olive);
   font-size: 12px;
 }
 
-[data-testid="stSliderTickBar"] { font-family: var(--sg-font-mono); color: var(--sg-muted); }
+[data-testid="stSliderTickBar"] { font-family: var(--sg-font-mono); color: var(--sg-stone-text); }
 
 /* Checkbox, toggle and radio: forest accent with a smooth state change. */
 [data-testid="stCheckbox"] label span,
@@ -535,46 +535,46 @@ ul[role="listbox"] li[aria-selected="true"] { background: var(--sg-lavender); }
 }
 
 [data-testid="stCheckbox"] p,
-[data-testid="stRadio"] p { font-family: var(--sg-font-sans); color: var(--sg-ink); }
+[data-testid="stRadio"] p { font-family: var(--sg-font-sans); color: var(--sg-espresso); }
 
-input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-olive); }
 
 /* Data tables: outlined card, mono numbers inside (canvas-drawn by Streamlit). */
 [data-testid="stDataFrame"],
 [data-testid="stTable"] {
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
   overflow: hidden;
-  background: var(--sg-paper);
+  background: var(--sg-card);
 }
 
 [data-testid="stTable"] table { font-family: var(--sg-font-sans); font-size: var(--sg-size-table); }
-[data-testid="stTable"] th { background: var(--sg-ivory); color: var(--sg-ink-2); font-weight: 600; }
-[data-testid="stTable"] td { border-color: var(--sg-line); }
+[data-testid="stTable"] th { background: var(--sg-sand); color: var(--sg-ink-2); font-weight: 600; }
+[data-testid="stTable"] td { border-color: var(--sg-rule); }
 
 /* Code blocks (hashes, PEM keys). */
 [data-testid="stCode"],
 .stCode pre {
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
-  background: var(--sg-ivory) !important;
+  background: var(--sg-sand) !important;
   font-family: var(--sg-font-mono);
   font-size: var(--sg-size-data);
 }
 
 /* Progress bars. */
 [data-testid="stProgress"] [role="progressbar"] > div {
-  border: 1px solid var(--sg-ink);
+  border: 1px solid var(--sg-espresso);
   border-radius: 999px;
-  background: var(--sg-paper);
+  background: var(--sg-card);
 }
 
-[data-testid="stProgress"] [role="progressbar"] > div > div > div { background: var(--sg-forest); }
+[data-testid="stProgress"] [role="progressbar"] > div > div > div { background: var(--sg-olive); }
 
 /* Plotly charts sit on paper cards. */
 [data-testid="stPlotlyChart"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   /* WHY no padding: Streamlit sizes this box to the figure's exact height,
      so padding pushed the axis titles out of view. The figure's own
@@ -593,8 +593,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 /* Graphviz and LaTeX blocks get the same paper card. */
 [data-testid="stGraphVizChart"],
 [data-testid="stMarkdownContainer"] .katex-display {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 16px;
 }
@@ -604,47 +604,47 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 /* ------------------------------------- 7 alerts, toasts, expanders, tabs -- */
 [data-testid="stAlert"],
 [data-testid="stAlertContainer"] {
-  background: var(--sg-paper) !important;
-  color: var(--sg-ink) !important;
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card) !important;
+  color: var(--sg-espresso) !important;
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-left-width: 6px;
   border-radius: var(--sg-radius-input);
 }
 
-[data-testid="stAlertContentInfo"] { border-left-color: var(--sg-forest); }
+[data-testid="stAlertContentInfo"] { border-left-color: var(--sg-olive); }
 [data-testid="stAlertContentSuccess"] { border-left-color: var(--sg-status-normal); }
 [data-testid="stAlertContentWarning"] { border-left-color: var(--sg-status-suspicious); }
 [data-testid="stAlertContentError"] { border-left-color: var(--sg-status-alarm); }
 
-[data-testid="stAlert"] p { color: var(--sg-ink); }
+[data-testid="stAlert"] p { color: var(--sg-espresso); }
 
 [data-testid="stToast"] {
-  background: var(--sg-paper);
-  color: var(--sg-ink);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  color: var(--sg-espresso);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
 }
 
 [data-testid="stExpander"] details {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-input);
 }
 
 [data-testid="stExpander"] summary {
   font-family: var(--sg-font-sans);
   font-weight: 600;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   border-radius: var(--sg-radius-input);
 }
 
-[data-testid="stExpander"] summary:hover { color: var(--sg-forest); background: var(--sg-ivory); }
+[data-testid="stExpander"] summary:hover { color: var(--sg-olive); background: var(--sg-sand); }
 
 /* Tabs: the selected-tab indicator slides between tabs. */
 [data-baseweb="tab-list"] {
   gap: 4px;
-  border-bottom: 1px solid var(--sg-line);
+  border-bottom: 1px solid var(--sg-rule);
 }
 
 [data-baseweb="tab"] {
@@ -656,11 +656,11 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   transition: color var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
 }
 
-[data-baseweb="tab"]:hover { color: var(--sg-forest); background: var(--sg-paper); }
-[data-baseweb="tab"][aria-selected="true"] { color: var(--sg-forest); }
+[data-baseweb="tab"]:hover { color: var(--sg-olive); background: var(--sg-card); }
+[data-baseweb="tab"][aria-selected="true"] { color: var(--sg-olive); }
 
 [data-baseweb="tab-highlight"] {
-  background: var(--sg-forest) !important;
+  background: var(--sg-olive) !important;
   height: 3px;
   border-radius: 3px;
   transition: transform var(--sg-dur-enter) var(--sg-ease), width var(--sg-dur-enter) var(--sg-ease) !important;
@@ -670,20 +670,20 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 /* ----------------------------------------------- 8 SwarmGuard components -- */
 .sg-card {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 20px 22px;
 }
 
 .sg-card--feature {
-  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-espresso);
   transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease);
 }
 
 .sg-card--feature:hover {
   transform: translate(-2px, -2px);
-  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-ink);
+  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-espresso);
 }
 
 .sg-card__title {
@@ -699,23 +699,23 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 /* Keyed containers that act as cards (scenario cards hold a real button). */
 [class*="st-key-sg-card"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 18px 20px 20px 20px;
-  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-feature) var(--sg-shadow-feature) 0 var(--sg-espresso);
   transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease);
 }
 
 [class*="st-key-sg-card"]:hover {
   transform: translate(-2px, -2px);
-  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-ink);
+  box-shadow: calc(var(--sg-shadow-feature) + 2px) calc(var(--sg-shadow-feature) + 2px) 0 var(--sg-espresso);
 }
 
 /* Flat paper cards for dense content (equations, diagrams, tables): outline, no shadow. */
 [class*="st-key-sg-paper"] {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 18px 20px;
 }
@@ -723,9 +723,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 /* Console panels: dark green-black, used for map, feed and verification. */
 [class*="st-key-sg-console"],
 .sg-console {
-  background: var(--sg-console);
-  color: var(--sg-console-tx);
-  border: 1px solid var(--sg-console-ln);
+  background: var(--sg-charcoal);
+  color: var(--sg-char-text);
+  border: 1px solid var(--sg-char-line);
   border-radius: var(--sg-radius-card);
   padding: 18px 20px;
 }
@@ -734,23 +734,23 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 [class*="st-key-sg-console"] label,
 [class*="st-key-sg-console"] [data-testid="stWidgetLabel"] p,
 [class*="st-key-sg-console"] [data-testid="stMarkdownContainer"],
-.sg-console p { color: var(--sg-console-tx); }
+.sg-console p { color: var(--sg-char-text); }
 
 [class*="st-key-sg-console"] [data-testid="stCaptionContainer"],
-[class*="st-key-sg-console"] small { color: var(--sg-console-mu); }
+[class*="st-key-sg-console"] small { color: var(--sg-char-mute); }
 
 /* Widgets inside console panels keep their tactile look but on the dark panel. */
 [class*="st-key-sg-console"] [data-testid="stSlider"] [role="group"] > div > div[data-rac],
 [class*="st-key-sg-console"] [data-testid="stSlider"] [role="slider"] {
-  background: var(--sg-mint);
-  border-color: var(--sg-console-tx);
+  background: var(--sg-amber);
+  border-color: var(--sg-char-text);
   box-shadow: none;
 }
 
-[class*="st-key-sg-console"] [data-testid="stSliderThumbValue"] { color: var(--sg-mint); }
-[class*="st-key-sg-console"] [data-testid="stSliderTickBar"] { color: var(--sg-console-mu); }
+[class*="st-key-sg-console"] [data-testid="stSliderThumbValue"] { color: var(--sg-amber); }
+[class*="st-key-sg-console"] [data-testid="stSliderTickBar"] { color: var(--sg-char-mute); }
 
-[class*="st-key-sg-console"] [data-testid="stCheckbox"] p { color: var(--sg-console-tx); }
+[class*="st-key-sg-console"] [data-testid="stCheckbox"] p { color: var(--sg-char-text); }
 
 .sg-console__head {
   display: flex;
@@ -766,15 +766,15 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sg-console-mu);
+  color: var(--sg-char-mute);
   margin: 0;
 }
 
 .sg-console__live {
   font-family: var(--sg-font-mono);
   font-size: 11px;
-  color: var(--sg-mint);
-  border: 1px solid var(--sg-console-ln);
+  color: var(--sg-amber);
+  border: 1px solid var(--sg-char-line);
   border-radius: 999px;
   padding: 2px 9px;
 }
@@ -788,8 +788,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 .sg-kpi {
   position: relative;
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 16px 18px 18px 18px;
   overflow: hidden;
@@ -801,7 +801,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   font-size: var(--sg-size-eyebrow);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sg-muted);
+  color: var(--sg-stone-text);
   margin: 0;
 }
 
@@ -811,7 +811,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   font-size: 40px;
   line-height: 1.05;
   margin: 8px 0 2px 0;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   font-variant-numeric: tabular-nums;
 }
 
@@ -823,7 +823,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   right: 0;
   bottom: 0;
   height: 5px;
-  background: var(--sg-line);
+  background: var(--sg-rule);
 }
 
 .sg-kpi--normal .sg-kpi__bar { background: var(--sg-status-normal); }
@@ -861,9 +861,9 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   border: 1.5px solid var(--sg-pill-colour, var(--sg-status-no-evidence));
-  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 16%, var(--sg-paper));
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 16%, var(--sg-card));
   border-radius: 999px;
   padding: 3px 10px 3px 8px;
   white-space: nowrap;
@@ -885,13 +885,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 .sg-pill--det-b { --sg-pill-colour: var(--sg-det-b); }
 .sg-pill--det-c { --sg-pill-colour: var(--sg-det-c); }
 .sg-pill--det-d { --sg-pill-colour: var(--sg-det-d); }
-.sg-pill--brand { --sg-pill-colour: var(--sg-forest); }
+.sg-pill--brand { --sg-pill-colour: var(--sg-olive); }
 
 /* Pills inside console panels: light text on a dark tint. */
 .sg-console .sg-pill,
 [class*="st-key-sg-console"] .sg-pill {
-  color: var(--sg-console-tx);
-  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 22%, var(--sg-console));
+  color: var(--sg-char-text);
+  background: color-mix(in srgb, var(--sg-pill-colour, var(--sg-status-no-evidence)) 22%, var(--sg-charcoal));
 }
 
 /* Event feed (inside a console panel). */
@@ -907,13 +907,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   animation: sg-enter var(--sg-dur-enter) var(--sg-ease) both;
 }
 
-.sg-feed__row:nth-child(odd) { background: var(--sg-console-2); }
+.sg-feed__row:nth-child(odd) { background: var(--sg-charcoal-2); }
 .sg-feed__row:nth-child(2) { animation-delay: 40ms; }
 .sg-feed__row:nth-child(3) { animation-delay: 80ms; }
 .sg-feed__row:nth-child(4) { animation-delay: 120ms; }
 .sg-feed__row:nth-child(n+5) { animation-delay: 160ms; }
 
-.sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-console-mu); white-space: nowrap; }
+.sg-feed__time { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-char-mute); white-space: nowrap; }
 
 .sg-feed__dot {
   width: 9px;
@@ -927,15 +927,15 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 .sg-feed__dot--suspicious { background: var(--sg-status-suspicious); }
 .sg-feed__dot--alarm { background: var(--sg-status-alarm); }
 
-.sg-feed__text { font-size: 14px; color: var(--sg-console-tx); margin: 0; }
-.sg-feed__meta { font-family: var(--sg-font-mono); font-size: 11px; color: var(--sg-console-mu); margin: 0; }
+.sg-feed__text { font-size: 14px; color: var(--sg-char-text); margin: 0; }
+.sg-feed__meta { font-family: var(--sg-font-mono); font-size: 11px; color: var(--sg-char-mute); margin: 0; }
 
 /* Ribbon: a black band with detection events scrolling past. */
 .sg-ribbon {
   position: relative;
   overflow: hidden;
-  background: var(--sg-ink);
-  color: var(--sg-paper);
+  background: var(--sg-espresso);
+  color: var(--sg-card);
   border-radius: 999px;
   padding: 10px 0;
   white-space: nowrap;
@@ -951,7 +951,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 }
 
 .sg-ribbon__item b { font-weight: 600; }
-.sg-ribbon__sep { color: var(--sg-muted); }
+.sg-ribbon__sep { color: var(--sg-stone-text); }
 
 @keyframes sg-ribbon {
   from { transform: translateX(0); }
@@ -963,22 +963,22 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-left: 8px solid var(--sg-status-alarm);
   border-radius: var(--sg-radius-input);
   padding: 14px 18px;
   margin: 8px 0 24px 0;
 }
 
-.sg-banner--info { border-left-color: var(--sg-forest); }
+.sg-banner--info { border-left-color: var(--sg-olive); }
 .sg-banner__title { font-family: var(--sg-font-display); font-weight: 700; font-size: 17px; margin: 0; }
 .sg-banner__body { color: var(--sg-ink-2); margin: 2px 0 0 0; font-size: 14px; }
 
 /* Drone inspector: an outlined "properties" card. */
 .sg-inspector {
-  background: var(--sg-paper);
-  border: var(--sg-outline-card) solid var(--sg-ink);
+  background: var(--sg-card);
+  border: var(--sg-outline-card) solid var(--sg-espresso);
   border-radius: var(--sg-radius-card);
   padding: 18px 20px;
 }
@@ -989,14 +989,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
   align-items: center;
   gap: 10px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--sg-line);
+  border-bottom: 1px solid var(--sg-rule);
 }
 
 .sg-inspector__name { font-family: var(--sg-font-display); font-weight: 800; font-size: 22px; margin: 0; }
 
 .sg-props { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
 .sg-props th { text-align: left; font-weight: 600; color: var(--sg-ink-2); padding: 7px 8px 7px 0; }
-.sg-props td { padding: 7px 0; border-top: 1px solid var(--sg-line); }
+.sg-props td { padding: 7px 0; border-top: 1px solid var(--sg-rule); }
 .sg-props tr:first-child td, .sg-props tr:first-child th { border-top: none; }
 .sg-props .sg-num { font-family: var(--sg-font-mono); font-size: var(--sg-size-data); text-align: right; }
 
@@ -1006,8 +1006,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 .sg-action {
   margin-top: 12px;
   padding: 10px 12px;
-  background: var(--sg-ivory);
-  border: 1px solid var(--sg-line);
+  background: var(--sg-sand);
+  border: 1px solid var(--sg-rule);
   border-radius: 10px;
   font-size: 14px;
 }
@@ -1026,18 +1026,18 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 /* Small helpers. */
 .sg-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--sg-ink-2); }
-.sg-legend__swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--sg-ink); }
+.sg-legend__swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--sg-espresso); }
 .sg-equation-note { color: var(--sg-ink-2); font-size: 14px; margin-top: 8px; }
 .sg-hash { font-family: var(--sg-font-mono); font-size: 12px; word-break: break-all; color: var(--sg-ink-2); }
 
 /* -------------------------------------------------- 9 verification motion -- */
 .sg-verify { width: 100%; border-collapse: separate; border-spacing: 0 4px; font-size: 14px; }
 
-.sg-verify td { padding: 8px 10px; color: var(--sg-console-tx); background: var(--sg-console-2); }
+.sg-verify td { padding: 8px 10px; color: var(--sg-char-text); background: var(--sg-charcoal-2); }
 .sg-verify td:first-child { border-radius: 10px 0 0 10px; width: 40px; }
 .sg-verify td:last-child { border-radius: 0 10px 10px 0; }
 .sg-verify .sg-verify__name { font-family: var(--sg-font-mono); font-size: 13px; }
-.sg-verify .sg-verify__detail { color: var(--sg-console-mu); font-size: 13px; }
+.sg-verify .sg-verify__detail { color: var(--sg-char-mute); font-size: 13px; }
 
 /* PASS: the check mark draws itself (a left-to-right wipe over the icon).
    WHY a wipe on an <img>: st.html removes inline <svg>, so icons are SVG
@@ -1058,7 +1058,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 /* FAIL: the row shakes once and turns red-tinted. */
 .sg-verify tr.sg-verify--fail td {
-  background: color-mix(in srgb, var(--sg-status-alarm) 28%, var(--sg-console));
+  background: color-mix(in srgb, var(--sg-status-alarm) 28%, var(--sg-charcoal));
   animation: sg-shake var(--sg-dur-enter) var(--sg-ease) 1;
 }
 
@@ -1072,7 +1072,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--sg-forest); }
 
 .sg-byte {
   font-family: var(--sg-font-mono);
-  background: color-mix(in srgb, var(--sg-status-alarm) 18%, var(--sg-paper));
+  background: color-mix(in srgb, var(--sg-status-alarm) 18%, var(--sg-card));
   border: 1.5px solid var(--sg-status-alarm);
   border-radius: 6px;
   padding: 1px 6px;

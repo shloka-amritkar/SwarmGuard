@@ -29,10 +29,10 @@ logger = logging.getLogger(__name__)
 
 MAX_TILT_DEG = 4.0
 
-_INK = PALETTE.ink
-_PAPER = PALETTE.paper
-_LAV = PALETTE.lavender
-_BLUSH = PALETTE.blush
+_INK = PALETTE.espresso
+_PAPER = PALETTE.card
+_LAV = PALETTE.brass
+_BLUSH = PALETTE.sage
 
 # Inner SVG markup of each sticker (viewBox 0 0 64 64). The root <svg> sets
 # stroke = ink, stroke-width = 2 and fill = none, so shapes only state a fill

@@ -1,22 +1,22 @@
-# SwarmGuard Streamlit configuration ("Ivory + Console", docs/phases/phase-5.md 5.7).
+# SwarmGuard Streamlit configuration ("Ground Truth", docs/phases/phase-7.md B1).
 # TOML cannot import Python, so the few colours below are copies of
 # core/palette.py values. tests/test_phase5.py checks they still match.
 
 [theme]
 base = "light"
-backgroundColor = "#FFFEF2"          # ivory
-secondaryBackgroundColor = "#FFFFFF" # paper
-textColor = "#111111"                # ink
-primaryColor = "#0B4D40"             # forest
-linkColor = "#0B4D40"                # forest
-borderColor = "#111111"              # ink outlines on widgets
+backgroundColor = "#F3EEE3"          # sand
+secondaryBackgroundColor = "#FBF8F2" # card
+textColor = "#1E1A16"                # espresso
+primaryColor = "#3F4F24"             # olive
+linkColor = "#3F4F24"                # olive
+borderColor = "#1E1A16"              # espresso outlines on widgets
 showWidgetBorder = true
-redColor = "#C8221B"                 # alarms only
+redColor = "#B3261E"                 # brick: alarms only
 font = "sans serif"
-baseRadius = "10px"
-buttonRadius = "10px"
-dataframeBorderColor = "#E4E1D3"     # line
-dataframeHeaderBackgroundColor = "#FFFEF2"
+baseRadius = "8px"
+buttonRadius = "8px"
+dataframeBorderColor = "#DDD5C4"     # rule
+dataframeHeaderBackgroundColor = "#ECE5D6"  # vellum
 
 [client]
 toolbarMode = "minimal"

@@ -65,45 +65,49 @@ TECH STACK (do not add others without saying why)
   No networkx (implement PageRank yourself). No kaleido (use matplotlib for
   static figures in PDFs). No React or JavaScript frameworks.
 
-UI DIRECTION (full specification in docs/phases/phase-5.md, which wins on
-any conflict)
-  "Ivory + Console": a calm, premium security product. Style references:
-  Wispr Flow (ivory canvas, deep green brand, lavender buttons, serif
-  headline with an italic second line, eyebrow labels, floating pill
-  navbar, flowing motion) and Urban Macaw's STYLE only (tactile outlined
-  buttons with hard offset shadows, crisp outlined cards, bold numerals,
-  thick-outlined line art). Never their imagery.
-  Colour roles: ivory page (#FFFEF2) with white paper cards; ink #111111
-  for text, outlines and hard shadows; forest #0B4D40 is the ONE brand
-  colour (links, active nav, key headings); lavender #E6DDFE is the ONE
-  interaction colour (primary buttons, selected states); red #C8221B ONLY
-  for alarms and destructive actions (tamper test). Operational content
-  (live map, telemetry, event feed, evidence verification) sits in dark
-  green-black CONSOLE PANELS (#0E1F1B, mint #7FD8B8 for paths) inside the
-  light page. Fixed status and detector colours (A blue, B teal, C ochre,
-  D violet). Status is always colour PLUS a text label; status text is
-  ink on a tinted fill, never the status colour itself (contrast).
-  Fonts: Instrument Serif (page titles, hero; italic for emphasis),
-  Bricolage Grotesque 600-800 (KPI numbers, card titles, section labels),
-  Inter (body, menus, tables, buttons), JetBrains Mono (coordinates,
-  hashes, IDs, timestamps).
-  Shapes: outlines 1.5px ink on cards, 2px on buttons and inputs; radius
-  16px cards, 10px buttons/inputs, 999px pills; hard shadows with no blur
-  (buttons 3px 3px 0, feature cards 4px 4px 0, dense data cards none;
-  console panels 1px border, no shadow). 8px grid, 24px gutters, max width
-  1360px.
-  Motion: quick and calm (90ms press, 140ms hover, 240ms entrances, 400ms
-  count-up/draw). Buttons lift on hover, press into their shadow on click,
-  with a CSS-only ripple. Per-page entrance fade, KPI count-up, draw-on
-  PASS check, one shake on FAIL. Looping motion only in the Home hero.
-  Everything stops under prefers-reduced-motion.
-  Graphics: inline SVG line-art stickers (technical subjects, no faces) on
-  Home, scenario cards, empty states and section headers; never in charts.
-  The swarm map is always carto-darkmatter over Pune inside a console panel.
-  Banned: neon, glows, purple/pink "cyber" gradients, glassmorphism,
-  blurred shadows, rainbow palettes, emojis, red for anything but alarms
-  or destructive actions, default Streamlit or Plotly looks, cartoon
-  faces, distracting looped motion outside the Home hero.
+UI DIRECTION (full specification in docs/phases/phase-7.md, which wins on
+any conflict and replaces every earlier UI direction)
+  "Ground Truth": SwarmGuard's original design system. Topographic survey
+  meets forensic case file, with amber-phosphor instrument panels. It must
+  feel serious through PRECISION (coordinates, crosshairs, survey lines,
+  hashes, case numbers, radar), never through "hacker" colour cliches.
+  Colour roles: sand page #F3EEE3, card #FBF8F2 (never pure white), vellum
+  #ECE5D6 for secondary surfaces; espresso #1E1A16 for text, outlines and
+  hard shadows; olive #3F4F24 is the ONE brand colour (active nav, links,
+  headings, selections); brass #D9A441 is the ONE action colour (primary
+  buttons); terracotta only as a sparing accent. Charcoal #23201C
+  INSTRUMENT PANELS (with amber #F2B24C sweeps and trails) are the only
+  dark surfaces. Brick #B3261E is the ONLY red: alarms and the tamper test.
+  Fixed detector colours: A steel, B teal, C ochre, D terracotta. Status
+  is always colour PLUS a text label, written in espresso on a tint.
+  Caption text uses stone_text (#6B6459); stone (#8C8579) is for marks only.
+  Fonts: Fraunces (titles, hero; one italic word per title), IBM Plex Sans
+  (body, nav, tables, buttons), IBM Plex Mono (KPI numerals, coordinates,
+  hashes, case numbers, timestamps, eyebrows). TTF copies in assets/fonts/
+  are used by the PDF report.
+  Shapes: 1.5px espresso outlines; radius 14px cards, 8px buttons/inputs,
+  999px pills; hard shadows without blur (buttons 3px 3px 0, feature
+  cards 4px 4px 0); panels 1px char_line border, no shadow. 8px grid,
+  24px gutters, 56px between sections, max width 1320px.
+  Motifs: M1 faint topographic contour background; M2 crosshair corner
+  marks on feature cards and panels; M3 coordinate rulers on the hero;
+  M4 amber radar; M5 scrolling hash ribbon of real manifest hashes;
+  M6 case-file cards with folder tabs; M7 rubber-stamp marks (VERIFIED,
+  TAMPERED, FILED); M8 survey-mark section dividers.
+  Navbar: full-width 64px sand bar, radar mark + SWARMGUARD wordmark,
+  olive active link with a sliding underline, live coordinate/UTC readout.
+  Motion: cubic-bezier(0.2,0.8,0.2,1); 90ms press, 140ms hover, 240ms
+  entrances, 280ms stamps, 400ms count-up/draw. Looping motion only in
+  the Home hero and the hash ribbon. Everything stops under
+  prefers-reduced-motion.
+  Maps: carto-darkmatter inside instrument panels, dragmode "pan",
+  scroll zoom on, camera control "Follow swarm" / "Whole flight".
+  Banned: neon, glow, decorative gradients, glassmorphism, blurred
+  shadows, black or near-black UI backgrounds, purple, saturated blue,
+  red outside true alarms, emojis, mascots, stock icon packs (other than
+  Streamlit Material icons), and the retired Phase 5 elements (floating
+  pill navbar, text on curved paths, waveform pill, lavender, forest
+  green, Instrument Serif, Bricolage Grotesque, Inter, JetBrains Mono).
   ONE source of truth for colours: core/palette.py (shared with the PDF
   report). ui/theme.py re-exports it and holds the non-colour tokens
   (fonts, radii, outlines, shadows, motion).
@@ -194,13 +198,15 @@ SwarmGuard/
                WHY "views" not "pages": Streamlit auto-builds navigation
                from a folder named pages/, which would conflict with our
                custom st.navigation menu.
-  assets/      style.css, stickers.py (inline SVG line-art stickers),
-               hero.html (animated Home hero)
+  assets/      style.css, stickers.py (SVG line-art stickers),
+               hero.html (animated Home hero: radar scope),
+               fonts/ (OFL TTFs for the PDF), test_count.json
   .streamlit/  config.toml
   tests/
-  docs/phases/ phase-1.md ... phase-6.md   (build instructions)
+  docs/phases/ phase-1.md ... phase-7.md   (build instructions)
   docs/notes/  phase-N-explained.md        (written by you, for the viva)
-  docs/design-refs/                        (optional UI screenshots)
+  docs/design-refs/                        (gitignored: never publish
+                                            third-party reference images)
   docs/screenshots/                        (screenshots of every view)
   data/        (gitignored: db, calibration, packages, models)
   keys/        (gitignored)

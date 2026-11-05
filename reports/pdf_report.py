@@ -12,14 +12,18 @@ LAYOUT (top to bottom)
     8 limitations and disclaimer
 Every page has a header and footer with the incident id and page number.
 
-STYLE: white paper (printable), black outlines, forest (brand) headings,
-neutral line-colour table headers; red appears ONLY for alarms (the fused-alarm
-bars). Drones the simulation attacked are drawn in forest, because that is
-ground truth, not an alarm. Lavender is the app's button colour and is not used
-in print. All colours come from core/palette.py (PALETTE), the same
-module the Streamlit app uses, so the report always matches the app.
-Fonts: ReportLab's built-in Helvetica and Courier (always available, no
-font files to ship; the spec allows Helvetica as the fallback).
+STYLE ("Ground Truth", docs/phases/phase-7.md): white paper (printable, so
+no sand background that would waste ink), espresso outlines, olive (brand)
+headings, vellum table headers; brick red appears ONLY for alarms (the
+fused-alarm bars). Drones the simulation attacked are drawn in olive,
+because that is ground truth, not an alarm. Brass is the app's button colour
+and is not used in print. All colours come from core/palette.py (PALETTE),
+the same module the Streamlit app uses, so the report always matches the app.
+Fonts: the app's own fonts, bundled as TTF files in assets/fonts/ (SIL Open
+Font License): Fraunces for titles, IBM Plex Sans for text, IBM Plex Mono
+for hashes and ids. If a font file is missing, the report falls back to
+ReportLab's built-in Helvetica and Courier and logs a warning, so a report
+can always be produced.
 
 WHY platypus ("flowables"): we list paragraphs, tables and images and
 ReportLab breaks them across pages itself; we never compute coordinates by
@@ -59,6 +63,9 @@ from reportlab.platypus import (  # noqa: E402
     Table,
     TableStyle,
 )
+from matplotlib import font_manager  # noqa: E402
+from reportlab.pdfbase import pdfmetrics  # noqa: E402
+from reportlab.pdfbase.ttfonts import TTFont  # noqa: E402
 from xml.sax.saxutils import escape  # noqa: E402
 
 from core.palette import PALETTE  # noqa: E402
@@ -90,6 +97,55 @@ DISCLAIMER = (
 )
 
 
+FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+# Our font name -> (TTF file in assets/fonts, built-in fallback)
+FONT_FILES: dict[str, tuple[str, str]] = {
+    "GT-Serif": ("Fraunces72pt-SemiBold.ttf", "Helvetica-Bold"),
+    "GT-Serif-Italic": ("Fraunces72pt-SemiBoldItalic.ttf", "Helvetica-BoldOblique"),
+    "GT-Sans": ("IBMPlexSans-Regular.ttf", "Helvetica"),
+    "GT-Sans-Medium": ("IBMPlexSans-Medium.ttf", "Helvetica"),
+    "GT-Sans-SemiBold": ("IBMPlexSans-SemiBold.ttf", "Helvetica-Bold"),
+    "GT-Mono": ("IBMPlexMono-Regular.ttf", "Courier"),
+    "GT-Mono-Medium": ("IBMPlexMono-Medium.ttf", "Courier-Bold"),
+}
+_FONT_CACHE: dict[str, str] = {}   # filled once per process by fonts(), never changed after
+
+
+def fonts() -> dict[str, str]:
+    """Register the bundled TTF fonts with ReportLab and matplotlib, once.
+
+    Returns a map from our font name ("GT-Sans") to the name to actually
+    use: our name when its TTF loaded, otherwise the built-in fallback.
+    WHY a map: the rest of the module never needs to know whether a
+    fallback happened, and a missing font never stops a report.
+    WHY cache: registering the same font twice is wasted work.
+    """
+    if _FONT_CACHE:
+        return _FONT_CACHE
+    for name, (filename, fallback) in FONT_FILES.items():
+        path = FONT_DIR / filename
+        try:
+            pdfmetrics.registerFont(TTFont(name, str(path)))
+            font_manager.fontManager.addfont(str(path))
+            _FONT_CACHE[name] = name
+        except Exception as exc:  # noqa: BLE001  (any font problem -> fallback)
+            logger.warning("font %s unavailable (%s); using %s", filename, exc, fallback)
+            _FONT_CACHE[name] = fallback
+    if _FONT_CACHE["GT-Sans"] == "GT-Sans":
+        # WHY: lets <b> inside a Paragraph switch to the SemiBold file
+        pdfmetrics.registerFontFamily("GT-Sans", normal="GT-Sans", bold=_FONT_CACHE["GT-Sans-SemiBold"],
+                                      italic="GT-Sans", boldItalic=_FONT_CACHE["GT-Sans-SemiBold"])
+    return _FONT_CACHE
+
+
+def _figure_rc() -> dict[str, Any]:
+    """matplotlib settings so the PDF figures use IBM Plex Sans and palette ink colours."""
+    loaded = fonts()["GT-Sans"] == "GT-Sans"
+    return {"font.family": "IBM Plex Sans" if loaded else "sans-serif",
+            "text.color": PALETTE.espresso, "axes.labelcolor": PALETTE.espresso,
+            "xtick.color": PALETTE.ink_2, "ytick.color": PALETTE.ink_2}
+
+
 def _c(hex_colour: str) -> colors.Color:
     """Palette hex -> ReportLab colour."""
     return colors.HexColor(hex_colour)
@@ -119,10 +175,19 @@ def timeline_figure(runs: Sequence[DetectionRun], onset: float | None) -> Figure
     """
     rows = [(r, i) for r in runs for i in sorted(r.alarm_drones())]
     height = 1.2 + 0.28 * max(len(rows), 1)
-    fig, ax = plt.subplots(figsize=(8.0, min(height, 9.0)), dpi=150)
+    with plt.rc_context(_figure_rc()):
+        fig, ax = plt.subplots(figsize=(8.0, min(height, 9.0)), dpi=150)
+        _draw_timeline(ax, runs, rows, onset)
+        fig.tight_layout()
+    return fig
+
+
+def _draw_timeline(ax: Any, runs: Sequence[DetectionRun], rows: list[tuple[DetectionRun, int]],
+                   onset: float | None) -> None:
+    """Draw the alarm bars of timeline_figure onto ax (split out to keep functions short)."""
     if not rows:
         ax.text(0.5, 0.5, "No detector alarm in this run", ha="center", va="center",
-                transform=ax.transAxes, color=PALETTE.ink)
+                transform=ax.transAxes, color=PALETTE.espresso)
     for y, (run, i) in enumerate(rows):
         times = run.times()
         dt = float(times[1] - times[0]) if len(times) > 1 else 0.1
@@ -134,75 +199,81 @@ def timeline_figure(runs: Sequence[DetectionRun], onset: float | None) -> Figure
     if runs:
         ax.set_xlim(0, float(runs[0].times()[-1]))
     if onset is not None:
-        ax.axvline(onset, color=PALETTE.ink, ls="--", lw=1.2, label=f"estimated onset {onset:.1f} s")
-        ax.legend(loc="lower right", fontsize=7, frameon=True, edgecolor=PALETTE.ink)
+        ax.axvline(onset, color=PALETTE.espresso, ls="--", lw=1.2, label=f"estimated onset {onset:.1f} s")
+        ax.legend(loc="lower right", fontsize=7, frameon=True, edgecolor=PALETTE.espresso)
     ax.set_xlabel("time (s)")
-    ax.set_title("Detector alarms per drone (simulation result)", fontsize=10, color=PALETTE.ink)
+    ax.set_title("Detector alarms per drone (simulation result)", fontsize=10, color=PALETTE.espresso)
     for spine in ax.spines.values():
-        spine.set_color(PALETTE.ink)
+        spine.set_color(PALETTE.espresso)
         spine.set_linewidth(1.5)
-    ax.grid(axis="x", color=PALETTE.line, lw=0.6)
-    fig.tight_layout()
-    return fig
+    ax.grid(axis="x", color=PALETTE.rule, lw=0.6)
 
 
 def trajectory_figure(result: SimResult) -> Figure:
     """Top-down paths: reported GPS (dotted) and SIMULATION GROUND TRUTH (solid).
 
-    Drones the simulation attacked are drawn in forest (not red: red is kept
+    Drones the simulation attacked are drawn in olive (not red: red is kept
     strictly for detector alarms, and this is ground truth). WHY show truth here:
     this figure goes into the evidence package as an evaluation aid and is
     labelled as ground truth, which no detector ever saw (rule R1).
     """
     true_pos, gps = result.stack("true_pos"), result.stack("gps_pos")
     attacked = result.attacked_drones()
-    fig, ax = plt.subplots(figsize=(8.0, 6.0), dpi=150)
+    with plt.rc_context(_figure_rc()):
+        fig, ax = plt.subplots(figsize=(8.0, 6.0), dpi=150)
+        _draw_trajectories(ax, result, true_pos, gps, attacked)
+        fig.tight_layout()
+    return fig
+
+
+def _draw_trajectories(ax: Any, result: SimResult, true_pos: np.ndarray, gps: np.ndarray,
+                       attacked: Any) -> None:
+    """Draw the paths of trajectory_figure onto ax."""
     for i in range(result.n_drones):
-        colour = PALETTE.forest if i in attacked else PALETTE.ink
+        colour = PALETTE.olive if i in attacked else PALETTE.espresso
         ax.plot(true_pos[:, i, 0], true_pos[:, i, 1], "-", color=colour, lw=1.0)
         ax.plot(gps[:, i, 0], gps[:, i, 1], ":", color=colour, lw=0.7)
-    ax.plot([], [], "-", color=PALETTE.ink, label="true path (SIMULATION GROUND TRUTH)")
-    ax.plot([], [], ":", color=PALETTE.ink, label="reported GPS")
-    ax.plot([], [], "-", color=PALETTE.forest, label="drone attacked in the simulation")
+    ax.plot([], [], "-", color=PALETTE.espresso, label="true path (SIMULATION GROUND TRUTH)")
+    ax.plot([], [], ":", color=PALETTE.espresso, label="reported GPS")
+    ax.plot([], [], "-", color=PALETTE.olive, label="drone attacked in the simulation")
     ax.set_xlabel("East (m)")
     ax.set_ylabel("North (m)")
     ax.set_aspect("equal", adjustable="datalim")
-    ax.grid(color=PALETTE.line, lw=0.6)
-    ax.legend(loc="best", fontsize=7, edgecolor=PALETTE.ink)
-    ax.set_title("Flight paths (simulation result)", fontsize=10, color=PALETTE.ink)
+    ax.grid(color=PALETTE.rule, lw=0.6)
+    ax.legend(loc="best", fontsize=7, edgecolor=PALETTE.espresso)
+    ax.set_title("Flight paths (simulation result)", fontsize=10, color=PALETTE.espresso)
     for spine in ax.spines.values():
-        spine.set_color(PALETTE.ink)
+        spine.set_color(PALETTE.espresso)
         spine.set_linewidth(1.5)
-    fig.tight_layout()
-    return fig
 
 
 # --------------------------------------------------------------------------
 # Styles and small builders
 # --------------------------------------------------------------------------
 def _styles() -> dict[str, ParagraphStyle]:
-    """Paragraph styles in the app palette (Helvetica family)."""
+    """Paragraph styles in the app palette and fonts (Fraunces, IBM Plex Sans / Mono)."""
     base = getSampleStyleSheet()
-    ink, brand = _c(PALETTE.ink), _c(PALETTE.forest)
+    f = fonts()
+    ink, brand = _c(PALETTE.espresso), _c(PALETTE.olive)
     return {
-        "title": ParagraphStyle("title", parent=base["Title"], fontName="Helvetica-Bold",
-                                fontSize=40, leading=44, textColor=brand, alignment=TA_CENTER),
-        "cover": ParagraphStyle("cover", parent=base["Normal"], fontName="Helvetica-Bold",
-                                fontSize=14, leading=20, textColor=ink, alignment=TA_CENTER),
-        "h1": ParagraphStyle("h1", parent=base["Heading1"], fontName="Helvetica-Bold",
-                             fontSize=15, leading=19, textColor=brand, spaceBefore=10, spaceAfter=6),
-        "body": ParagraphStyle("body", parent=base["Normal"], fontName="Helvetica",
-                               fontSize=9.5, leading=13, textColor=ink, spaceAfter=4),
-        "cell": ParagraphStyle("cell", parent=base["Normal"], fontName="Helvetica",
-                               fontSize=8, leading=10, textColor=ink),
-        "mono": ParagraphStyle("mono", parent=base["Normal"], fontName="Courier",
+        "title": ParagraphStyle("title", parent=base["Title"], fontName=f["GT-Serif"],
+                                fontSize=40, leading=46, textColor=brand, alignment=TA_CENTER),
+        "cover": ParagraphStyle("cover", parent=base["Normal"], fontName=f["GT-Mono-Medium"],
+                                fontSize=12, leading=19, textColor=ink, alignment=TA_CENTER),
+        "h1": ParagraphStyle("h1", parent=base["Heading1"], fontName=f["GT-Serif"],
+                             fontSize=16, leading=21, textColor=brand, spaceBefore=10, spaceAfter=6),
+        "body": ParagraphStyle("body", parent=base["Normal"], fontName=f["GT-Sans"],
+                               fontSize=9.5, leading=13.5, textColor=ink, spaceAfter=4),
+        "cell": ParagraphStyle("cell", parent=base["Normal"], fontName=f["GT-Sans"],
+                               fontSize=8, leading=10.5, textColor=ink),
+        "mono": ParagraphStyle("mono", parent=base["Normal"], fontName=f["GT-Mono"],
                                fontSize=7, leading=9, textColor=ink),
     }
 
 
 def _table(data: list[list[Any]], widths: list[float], st: dict[str, ParagraphStyle],
            mono_cols: Sequence[int] = ()) -> Table:
-    """A table with a neutral (line-colour) header row and black grid lines (cells wrap)."""
+    """A table with a vellum header row, rule-coloured inner lines and an espresso box."""
     def cell(value: Any, col: int, header: bool) -> Paragraph:
         text = escape("-" if value is None else str(value))
         style = st["mono"] if (col in mono_cols and not header) else st["cell"]
@@ -211,9 +282,9 @@ def _table(data: list[list[Any]], widths: list[float], st: dict[str, ParagraphSt
     body = [[cell(v, c, r == 0) for c, v in enumerate(row)] for r, row in enumerate(data)]
     table = Table(body, colWidths=widths, repeatRows=1)
     table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), _c(PALETTE.line)),
-        ("GRID", (0, 0), (-1, -1), 0.6, _c(PALETTE.ink)),
-        ("BOX", (0, 0), (-1, -1), OUTLINE_W, _c(PALETTE.ink)),
+        ("BACKGROUND", (0, 0), (-1, 0), _c(PALETTE.vellum)),
+        ("GRID", (0, 0), (-1, -1), 0.6, _c(PALETTE.rule)),
+        ("BOX", (0, 0), (-1, -1), OUTLINE_W, _c(PALETTE.espresso)),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("TOPPADDING", (0, 0), (-1, -1), 3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
@@ -227,17 +298,19 @@ def _fmt(value: Any, spec: str = ".2f", unit: str = "") -> str:
 
 
 def _header_footer(incident_id: str):  # noqa: ANN202 (ReportLab callback type)
-    """Page decoration: forest rule + id at the top, page number at the bottom."""
+    """Page decoration: olive rule + id at the top, page number at the bottom (IBM Plex Mono)."""
+    f = fonts()
+
     def draw(canvas: Any, doc: Any) -> None:
         canvas.saveState()
-        canvas.setStrokeColor(_c(PALETTE.forest))
-        canvas.setLineWidth(2)
+        canvas.setStrokeColor(_c(PALETTE.olive))
+        canvas.setLineWidth(1.5)
         canvas.line(MARGIN, PAGE_H - 12 * mm, PAGE_W - MARGIN, PAGE_H - 12 * mm)
-        canvas.setFont("Helvetica-Bold", 8)
-        canvas.setFillColor(_c(PALETTE.ink))
+        canvas.setFont(f["GT-Mono-Medium"], 8)
+        canvas.setFillColor(_c(PALETTE.espresso))
         canvas.drawString(MARGIN, PAGE_H - 10 * mm, f"SWARMGUARD  |  {incident_id}")
         canvas.drawRightString(PAGE_W - MARGIN, PAGE_H - 10 * mm, "SIMULATION REPORT")
-        canvas.setFont("Helvetica", 8)
+        canvas.setFont(f["GT-Mono"], 8)
         canvas.drawString(MARGIN, 10 * mm, f"{incident_id} - simulation result")
         canvas.drawRightString(PAGE_W - MARGIN, 10 * mm, f"Page {doc.page}")
         canvas.restoreState()
@@ -324,11 +397,12 @@ def _integrity_section(file_hashes: Sequence[dict[str, Any]], fingerprint: str, 
     rows = [["File", "SHA-256", "Bytes"]]
     rows += [[f["path"], f["sha256"], f["size_bytes"]] for f in file_hashes]
     w = CONTENT_W
+    mono = fonts()["GT-Mono"]
     return [Paragraph("7. Evidence integrity", st["h1"]),
             _table(rows, [0.3 * w, 0.58 * w, 0.12 * w], st, mono_cols=(1,)),
             Spacer(1, 3 * mm),
-            Paragraph(f"Public key fingerprint: <font face='Courier'>{escape(fingerprint)}</font>", st["body"]),
-            Paragraph(f"Previous manifest hash: <font face='Courier'>{escape(previous)}</font>", st["body"]),
+            Paragraph(f"Public key fingerprint: <font face='{mono}'>{escape(fingerprint)}</font>", st["body"]),
+            Paragraph(f"Previous manifest hash: <font face='{mono}'>{escape(previous)}</font>", st["body"]),
             Paragraph("This report's own SHA-256 is listed in manifest.json, which is signed with "
                       "Ed25519 (manifest.sig). A report cannot contain its own hash.", st["body"])]
 

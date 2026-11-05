@@ -15,7 +15,7 @@ html, body {
   margin: 0;
   padding: 0;
   background: transparent;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   font-family: var(--sg-font-sans);
   overflow: hidden;
 }
@@ -24,13 +24,13 @@ html, body {
 
 /* Background art: a curved flight path with telemetry flowing along it. */
 .art { position: absolute; inset: 0; width: 100%; height: 100%; }
-.flight { fill: none; stroke: var(--sg-ink); stroke-opacity: 0.25; stroke-width: 1; }
-.orbit { fill: none; stroke: var(--sg-ink); stroke-opacity: 0.14; stroke-width: 1; stroke-dasharray: 2 7; }
+.flight { fill: none; stroke: var(--sg-espresso); stroke-opacity: 0.25; stroke-width: 1; }
+.orbit { fill: none; stroke: var(--sg-espresso); stroke-opacity: 0.14; stroke-width: 1; stroke-dasharray: 2 7; }
 .telemetry { font-family: var(--sg-font-mono); font-size: 13px; fill: var(--sg-ink-2); fill-opacity: 0.8; letter-spacing: 0.02em; }
-.drone-body { fill: var(--sg-paper); stroke: var(--sg-ink); stroke-width: 2; }
-.drone-rotor { fill: var(--sg-lavender); stroke: var(--sg-ink); stroke-width: 2; }
-.drone-arm { stroke: var(--sg-ink); stroke-width: 2; }
-.gnss { fill: var(--sg-paper); stroke: var(--sg-ink); stroke-width: 1.5; }
+.drone-body { fill: var(--sg-card); stroke: var(--sg-espresso); stroke-width: 2; }
+.drone-rotor { fill: var(--sg-brass); stroke: var(--sg-espresso); stroke-width: 2; }
+.drone-arm { stroke: var(--sg-espresso); stroke-width: 2; }
+.gnss { fill: var(--sg-card); stroke: var(--sg-espresso); stroke-width: 1.5; }
 
 /* Copy. */
 .content {
@@ -47,7 +47,7 @@ html, body {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--sg-muted);
+  color: var(--sg-stone-text);
   margin: 0;
 }
 
@@ -60,7 +60,7 @@ h1 {
   margin: 18px 0 0 0;
 }
 
-h1 em { display: block; font-style: italic; color: var(--sg-forest); }
+h1 em { display: block; font-style: italic; color: var(--sg-olive); }
 
 .sub {
   font-size: 17px;
@@ -80,28 +80,28 @@ h1 em { display: block; font-style: italic; color: var(--sg-forest); }
   font-family: var(--sg-font-sans);
   font-weight: 600;
   font-size: 16px;
-  color: var(--sg-ink);
+  color: var(--sg-espresso);
   text-decoration: none;
-  background: var(--sg-lavender);
-  border: var(--sg-outline-button) solid var(--sg-ink);
+  background: var(--sg-brass);
+  border: var(--sg-outline-button) solid var(--sg-espresso);
   border-radius: var(--sg-radius-button);
-  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-ink);
+  box-shadow: var(--sg-shadow-button) var(--sg-shadow-button) 0 var(--sg-espresso);
   padding: 12px 24px;
   transition: transform var(--sg-dur-hover) var(--sg-ease), box-shadow var(--sg-dur-hover) var(--sg-ease), background var(--sg-dur-hover) var(--sg-ease);
 }
 
-.cta:hover { background: var(--sg-lavender-2); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--sg-ink); }
-.cta:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--sg-ink); transition-duration: var(--sg-dur-press); }
-.cta:focus-visible { outline: 2px solid var(--sg-forest); outline-offset: 3px; }
+.cta:hover { background: var(--sg-brass-2); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--sg-espresso); }
+.cta:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--sg-espresso); transition-duration: var(--sg-dur-press); }
+.cta:focus-visible { outline: 2px solid var(--sg-olive); outline-offset: 3px; }
 
 .link {
   font-weight: 600;
-  color: var(--sg-forest);
+  color: var(--sg-olive);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
-.link:hover { color: var(--sg-forest-2); }
+.link:hover { color: var(--sg-olive-2); }
 
 /* Waveform pill: bars move like a live NIS signal; one bar spikes red now and then. */
 .wave {
@@ -111,19 +111,19 @@ h1 em { display: block; font-style: italic; color: var(--sg-forest); }
   height: 46px;
   margin-top: 30px;
   padding: 0 18px 0 14px;
-  background: var(--sg-paper);
-  border: 2.5px solid var(--sg-ink);
+  background: var(--sg-card);
+  border: 2.5px solid var(--sg-espresso);
   border-radius: 999px;
 }
 
-.wave__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sg-forest); margin-right: 8px; }
+.wave__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sg-olive); margin-right: 8px; }
 .wave__label { font-family: var(--sg-font-mono); font-size: 12px; color: var(--sg-ink-2); margin-left: 10px; }
 
 .bar {
   width: 4px;
   height: 22px;
   border-radius: 2px;
-  background: var(--sg-ink);
+  background: var(--sg-espresso);
   transform-origin: center;
   animation: wave 1.6s var(--sg-ease) infinite alternate;
   animation-delay: calc(var(--i) * -0.17s);
@@ -138,7 +138,7 @@ h1 em { display: block; font-style: italic; color: var(--sg-forest); }
 }
 
 @keyframes spike {
-  0%, 62%, 82%, 100% { transform: scaleY(0.4); background: var(--sg-ink); }
+  0%, 62%, 82%, 100% { transform: scaleY(0.4); background: var(--sg-espresso); }
   68%, 76%           { transform: scaleY(1.9); background: var(--sg-status-alarm); }
 }
 
@@ -150,8 +150,8 @@ h1 em { display: block; font-style: italic; color: var(--sg-forest); }
   width: 112%;
   bottom: 38px;
   transform: rotate(-2.2deg);
-  background: var(--sg-ink);
-  color: var(--sg-paper);
+  background: var(--sg-espresso);
+  color: var(--sg-card);
   padding: 12px 0;
   overflow: hidden;
   white-space: nowrap;
@@ -166,7 +166,7 @@ h1 em { display: block; font-style: italic; color: var(--sg-forest); }
 }
 
 .track b { font-weight: 600; }
-.track .sep { color: var(--sg-muted); }
+.track .sep { color: var(--sg-stone-text); }
 
 @keyframes ribbon { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 

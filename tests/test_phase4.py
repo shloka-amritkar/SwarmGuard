@@ -88,24 +88,25 @@ def _package(tmp_path: Path, pipe: PipelineResult, incident: Incident, storage: 
 # Palette
 # --------------------------------------------------------------------------
 def test_palette_values_and_conversion() -> None:
-    assert PALETTE.forest == "#0B4D40" and PALETTE.ivory == "#FFFEF2"
-    assert PALETTE.status_alarm == "#C8221B"
+    assert PALETTE.olive == "#3F4F24" and PALETTE.sand == "#F3EEE3"
+    assert PALETTE.status_alarm == "#B3261E"
     assert hex_to_rgb01("#FFFFFF") == (1.0, 1.0, 1.0)
     assert PALETTE.status_colour("compromised") == PALETTE.status_alarm
-    assert PALETTE.detector_colour("B") == "#0CA5A5"
+    assert PALETTE.detector_colour("B") == "#2F7D6D"
     assert PALETTE.detector_colour("F") == PALETTE.status_alarm
     with pytest.raises(ValueError):
         PALETTE.detector_colour("Z")
     with pytest.raises(ValueError):
         hex_to_rgb01("red")
     with pytest.raises(Exception):
-        PALETTE.forest = "#000000"  # type: ignore[misc]  (frozen dataclass)
+        PALETTE.olive = "#000000"  # type: ignore[misc]  (frozen dataclass)
 
 
 @pytest.mark.parametrize("fg, bg", [
-    ("ink", "ivory"), ("ink_2", "ivory"), ("muted", "ivory"), ("forest", "ivory"),
-    ("ink", "lavender"), ("console_tx", "console"), ("console_mu", "console"),
-    ("console_mu", "console_2"), ("mint", "console"), ("paper", "status_alarm"),
+    ("espresso", "sand"), ("espresso", "card"), ("ink_2", "sand"), ("stone_text", "sand"),
+    ("stone_text", "vellum"), ("olive", "sand"), ("olive", "sage"), ("espresso", "brass"),
+    ("espresso", "brass_2"), ("char_text", "charcoal"), ("char_mute", "charcoal"),
+    ("char_mute", "charcoal_2"), ("amber", "charcoal"), ("sand", "status_alarm"),
 ])
 def test_text_colours_meet_wcag_aa(fg: str, bg: str) -> None:
     """Every colour pair used for text reaches the WCAG AA ratio of 4.5:1."""
@@ -113,9 +114,10 @@ def test_text_colours_meet_wcag_aa(fg: str, bg: str) -> None:
 
 
 def test_status_colours_are_not_text_colours() -> None:
-    """Documents WHY status text is ink on a tint: the status colours fail AA as text."""
-    assert contrast_ratio(PALETTE.status_suspicious, PALETTE.paper) < WCAG_AA_TEXT
-    assert contrast_ratio(PALETTE.ink, PALETTE.paper) > 18
+    """Documents WHY status text is espresso on a tint, and why captions use stone_text."""
+    assert contrast_ratio(PALETTE.status_suspicious, PALETTE.card) < WCAG_AA_TEXT
+    assert contrast_ratio(PALETTE.stone, PALETTE.sand) < WCAG_AA_TEXT
+    assert contrast_ratio(PALETTE.espresso, PALETTE.card) > 15
 
 
 # --------------------------------------------------------------------------

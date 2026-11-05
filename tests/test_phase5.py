@@ -69,12 +69,12 @@ def clean_pipe() -> PipelineResult:
 # --------------------------------------------------------------------------
 def test_config_toml_matches_palette() -> None:
     theme = tomllib.loads((ROOT / ".streamlit" / "config.toml").read_text(encoding="utf-8"))["theme"]
-    assert theme["backgroundColor"] == PALETTE.ivory
-    assert theme["secondaryBackgroundColor"] == PALETTE.paper
-    assert theme["textColor"] == PALETTE.ink
-    assert theme["primaryColor"] == PALETTE.forest
+    assert theme["backgroundColor"] == PALETTE.sand
+    assert theme["secondaryBackgroundColor"] == PALETTE.card
+    assert theme["textColor"] == PALETTE.espresso
+    assert theme["primaryColor"] == PALETTE.olive
     assert theme["redColor"] == PALETTE.status_alarm
-    assert theme["dataframeBorderColor"] == PALETTE.line
+    assert theme["dataframeBorderColor"] == PALETTE.rule
 
 
 @pytest.mark.parametrize("path", ["assets/style.css", "assets/hero.html"])
@@ -119,7 +119,7 @@ def test_stickers_are_valid_svg(name: str) -> None:
     root = ET.fromstring(sticker(name, size=48, rotate=-3))
     assert root.tag.endswith("svg")
     assert root.get("aria-label")
-    assert root.get("stroke") == PALETTE.ink and root.get("stroke-width") == "2"
+    assert root.get("stroke") == PALETTE.espresso and root.get("stroke-width") == "2"
 
 
 def test_sticker_validation() -> None:
@@ -138,7 +138,7 @@ def test_hero_is_complete() -> None:
     for needed in ("<textPath", "<animateMotion", "prefers-reduced-motion", "pauseAnimations",
                    "Detect the drift,", "prove the attack.", "sg-quickstart", "bar--spike"):
         assert needed in page
-    assert "--sg-forest:" in page
+    assert "--sg-olive:" in page
 
 
 # --------------------------------------------------------------------------
@@ -185,7 +185,7 @@ def test_feed_ribbon_and_verification_html() -> None:
 # --------------------------------------------------------------------------
 def test_templates_registered() -> None:
     assert plots.LIGHT in pio.templates and plots.CONSOLE in pio.templates
-    assert pio.templates[plots.CONSOLE].layout.paper_bgcolor == PALETTE.console
+    assert pio.templates[plots.CONSOLE].layout.paper_bgcolor == PALETTE.charcoal
 
 
 def test_swarm_map_animation_and_modes(shift_pipe: PipelineResult) -> None:
