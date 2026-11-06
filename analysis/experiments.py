@@ -4,6 +4,8 @@
     run_trial     one seed of one configuration, scored against the truth
     sweep         run_trial for every (parameter value, seed) pair
     summarise     detection rates with Wilson intervals per value and detector
+    evaluate_scenarios  every preset scenario over evaluation seeds (the
+                  README results tables, cli.py evaluate)
 
 WHY sweeps: one run is an anecdote. "Detector A caught a 10 m hijack" says
 little; "A detects 100 % (95 % CI 83-100 %) of hijacks >= 4 m over 20
@@ -29,9 +31,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from analysis.calibration import EVALUATION_SEED_START, load_or_default
+from analysis.calibration import EVALUATION_SEED_START, load_calibration, load_or_default
 from analysis.metrics import RunMetrics, compute_metrics
-from attacks.scenarios import get_scenario
+from attacks.scenarios import get_scenario, list_scenarios
 from config import MULTI_TARGET_ATTACKS, AttackConfig, DetectorConfig, SimConfig
 from core.schema import SimResult, Verdict
 from core.utils import wilson_interval
@@ -321,3 +323,121 @@ def builtin_values(param: str, scenario: str) -> tuple[float, ...]:
     if exact or matches:
         return (exact or matches)[0].values
     raise ValueError(f"no built-in values for {param!r}; pass values explicitly")
+
+
+# --------------------------------------------------------------------------
+# Scenario evaluation (the README results tables)
+# --------------------------------------------------------------------------
+@dataclass(frozen=True)
+class EvalCase:
+    """One row of the README results tables.
+
+    scenario       preset scenario key
+    remove_attack  True: fly the scenario's swarm with its attack switched
+                   off, to measure false alarms of THAT swarm configuration
+    """
+
+    scenario: str
+    remove_attack: bool = False
+
+    @property
+    def label(self) -> str:
+        """Row label, e.g. "single_hijack" or "faulty_anchor_shift swarm, attack removed"."""
+        return f"{self.scenario} swarm, attack removed" if self.remove_attack else self.scenario
+
+
+def default_eval_cases() -> list[EvalCase]:
+    """Every preset scenario in display order, plus faulty_anchor_shift with its attack removed.
+
+    WHY the extra case: faulty_anchor_shift has faulty anchors built into its
+    swarm, so Detector C alarms there even without an attack. Measuring that
+    swarm clean shows how much of C's "detection" is really the anchors.
+    """
+    return [EvalCase(s.key) for s in list_scenarios()] + [EvalCase("faulty_anchor_shift", True)]
+
+
+def case_kind(case: EvalCase) -> str:
+    """"false_alarm" for runs without an attack, else "detection"."""
+    if case.remove_attack or get_scenario(case.scenario).attack.type == "none":
+        return "false_alarm"
+    return "detection"
+
+
+def _case_tasks(
+    case: EvalCase, seeds: range, require_calibration: bool
+) -> list[tuple[Any, SimConfig, AttackConfig, DetectorConfig, int, dict[str, Any]]]:
+    """run_tasks entries for one case: same thresholds for every seed."""
+    scenario = get_scenario(case.scenario)
+    if require_calibration and load_calibration(scenario.sim) is None:
+        raise ValueError(f"{case.scenario} has no calibration; run "
+                         f"'cli.py calibrate --scenario {case.scenario}' first")
+    det = load_or_default(scenario.sim)
+    atk = replace(scenario.attack, type="none") if case.remove_attack else scenario.attack
+    return [(case, scenario.sim, atk, det, s, {"include_recovery": True}) for s in seeds]
+
+
+def evaluate_scenarios(
+    cases: Sequence[EvalCase],
+    n_seeds: int,
+    workers: int = 1,
+    progress: ProgressFn = None,
+    seed_start: int = EVALUATION_SEED_START,
+    require_calibration: bool = True,
+) -> pd.DataFrame:
+    """Run every case on seeds seed_start .. seed_start + n_seeds - 1.
+
+    Returns a tidy DataFrame, one row per (case, seed, detector) with columns
+    case, scenario, kind, seed, detector, hit, delay. "hit" means
+      kind "detection":   an ALARM on an attacked drone at or after onset
+      kind "false_alarm": any ALARM or swarm flag on a run with no attack
+    WHY require_calibration defaults to True: the README numbers must use
+    calibrated thresholds; silently falling back to defaults would change
+    them without anyone noticing (fix F3).
+    """
+    if n_seeds < 1 or not cases:
+        raise ValueError("evaluation needs n_seeds >= 1 and at least one case")
+    if seed_start < EVALUATION_SEED_START:
+        raise ValueError(f"evaluation uses seeds >= {EVALUATION_SEED_START}, got {seed_start}")
+    seeds = range(seed_start, seed_start + n_seeds)
+    tasks = [t for case in cases for t in _case_tasks(case, seeds, require_calibration)]
+    rows = []
+    for case, trial in run_tasks(tasks, workers, progress):
+        kind = case_kind(case)
+        for short in DETECTOR_ORDER:
+            m: RunMetrics = trial["metrics"][short]
+            rows.append({"case": case.label, "scenario": case.scenario, "kind": kind,
+                         "seed": trial["seed"], "detector": short,
+                         "hit": m.clean_false_alarm if kind == "false_alarm" else m.detected,
+                         "delay": m.detection_delay})
+    return pd.DataFrame(rows)
+
+
+def evaluation_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Per (case, detector): k hits of n runs, rate and 95 % Wilson interval. Keeps case order."""
+    rows = []
+    for (label, detector), g in df.groupby(["case", "detector"], sort=False):
+        k, n = int(g["hit"].sum()), len(g)
+        low, high = wilson_interval(k, n)
+        rows.append({"case": label, "kind": g["kind"].iloc[0], "detector": detector,
+                     "seed_first": int(g["seed"].min()), "seed_last": int(g["seed"].max()),
+                     "k": k, "n": n, "rate": k / n, "ci_low": low, "ci_high": high})
+    return pd.DataFrame(rows)
+
+
+def format_rate(k: int, n: int) -> str:
+    """"14/50 = 28.0 % (17.5-41.7 %)": exact count, rate and 95 % Wilson interval."""
+    low, high = wilson_interval(k, n)
+    return f"{k}/{n} = {100 * k / n:.1f} % ({100 * low:.1f}-{100 * high:.1f} %)"
+
+
+def markdown_rows(table: pd.DataFrame, kind: str) -> list[str]:
+    """README table rows (Scenario | Seeds | A | B | C | Fused F) for one kind."""
+    lines = []
+    part = table[table["kind"] == kind]
+    for label, g in part.groupby("case", sort=False):
+        by_det = {r.detector: r for r in g.itertuples()}
+        first = g.iloc[0]
+        seeds = f"{first['n']} ({first['seed_first']}-{first['seed_last']})"
+        cells = " | ".join(format_rate(by_det[d].k, by_det[d].n) for d in DETECTOR_ORDER)
+        lines.append(f"| {label} | {seeds} | {cells} |")
+    return lines

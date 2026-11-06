@@ -95,6 +95,7 @@ example run.
 .venv\Scripts\python cli.py run --scenario single_hijack --seed 3 --plot
 .venv\Scripts\python cli.py detect --scenario rigid_swarm_shift --seed 5000
 .venv\Scripts\python cli.py calibrate --seeds 200 --target 0.01
+.venv\Scripts\python cli.py evaluate --seeds 50 --workers 4
 .venv\Scripts\python cli.py sweep --param magnitude --scenario single_hijack --seeds 50 --workers 4
 .venv\Scripts\python cli.py evasion --scenario slow_drift --seeds 40
 .venv\Scripts\python cli.py propagation --scenario clean_baseline --magnitude 6
@@ -224,8 +225,27 @@ better than they are.
 
 Measured on 2026-11-06 with the calibrated thresholds in `data/calibration/` (200 clean
 calibration flights per swarm configuration, target 1 %), on evaluation seeds 5000-5049
-(50 seeds per scenario, 60 s flights, `analysis.experiments.run_tasks` with `load_or_default`).
-Each cell is *detected runs / runs = rate (95 % Wilson interval)*. Simulation result.
+(50 seeds per scenario, 60 s flights). Each cell is *hits / runs = rate (95 % Wilson interval)*.
+Simulation result.
+
+To reproduce every row of the two tables below:
+
+```powershell
+.venv\Scripts\python cli.py calibrate --scenario clean_baseline --seeds 200
+.venv\Scripts\python cli.py calibrate --scenario light_show_pune --seeds 200
+.venv\Scripts\python cli.py calibrate --scenario faulty_anchor_shift --seeds 200
+.venv\Scripts\python cli.py evaluate --seeds 50 --workers 4 --csv data\evaluation.csv
+```
+
+`evaluate` runs every preset scenario plus `faulty_anchor_shift` with its attack removed, on
+evaluation seeds 5000-5049, and prints the rows in exactly this format. It refuses to run a
+scenario whose swarm configuration has no calibration, instead of silently falling back to the
+default thresholds (fix F3); `calibrate` prints which configuration it saved. Scenarios that share
+a swarm configuration share one calibration file: the `clean_baseline` calibration covers every
+preset except `light_show_pune` and `faulty_anchor_shift`, which have their own. Options: `--scenarios a,b` to choose scenarios,
+`--no-attack a,b` to fly scenarios with their attack removed, `--seed-start` (must be >= 5000),
+`--csv` for the raw per-seed results. The code is `evaluate_scenarios` in
+`analysis/experiments.py`.
 
 Detection rate over evaluation seeds (an ALARM on an attacked drone at or after onset). Simulation result.
 

@@ -6,6 +6,7 @@ Usage:
     python cli.py detect --scenario rigid_swarm_shift [--seed 5000] [--ml]
     python cli.py train-ml [--runs 300]
     python cli.py calibrate [--seeds 200] [--scenario clean_baseline] [--target 0.01]
+    python cli.py evaluate [--seeds 50] [--workers 4] [--csv results.csv]
     python cli.py sweep --param magnitude --scenario single_hijack --seeds 50 --workers 4
     python cli.py evasion --scenario slow_drift [--seeds 40] [--max-delay 10] [--workers 4]
     python cli.py propagation --scenario clean_baseline [--magnitude 6]
@@ -38,6 +39,13 @@ import pandas as pd  # noqa: E402
 from analysis.calibration import calibrate, load_calibration, load_or_default, save_calibration  # noqa: E402
 from analysis.evasion_search import stealth_envelope  # noqa: E402
 from analysis.experiments import PipelineResult, builtin_values, run_pipeline, sweep  # noqa: E402
+from analysis.experiments import (  # noqa: E402
+    EvalCase,
+    default_eval_cases,
+    evaluate_scenarios,
+    evaluation_table,
+    markdown_rows,
+)
 from analysis.experiments import summarise as summarise_sweep  # noqa: E402
 from analysis.metrics import RunMetrics, compute_metrics  # noqa: E402
 from analysis.propagation import propagation_study  # noqa: E402
@@ -264,6 +272,42 @@ def cmd_train_ml(args: argparse.Namespace) -> int:
         print(f"  {name:<20} {value:.3f}")
     digest = (Path(args.out) / "rf.sha256").read_text(encoding="utf-8").split()[0]
     print(f"Saved {path}  sha256 {digest}")
+    return 0
+
+
+def _eval_cases(args: argparse.Namespace) -> list[EvalCase]:
+    """Cases from --scenarios / --no-attack, or the README default set."""
+    if args.scenarios is None and args.no_attack is None:
+        return default_eval_cases()
+    keys = [k.strip() for k in args.scenarios.split(",")] if args.scenarios else []
+    clean = [k.strip() for k in args.no_attack.split(",")] if args.no_attack else []
+    for key in keys + clean:
+        get_scenario(key)  # WHY: fail early with a clear error for a misspelt key
+    return [EvalCase(k) for k in keys] + [EvalCase(k, remove_attack=True) for k in clean]
+
+
+def cmd_evaluate(args: argparse.Namespace) -> int:
+    """Evaluate scenarios on evaluation seeds and print the README results tables."""
+    cases = _eval_cases(args)
+    print(f"Evaluating {len(cases)} case(s) on {args.seeds} evaluation seeds each "
+          f"(from {args.seed_start}), {args.workers} worker(s)...")
+    df = evaluate_scenarios(cases, args.seeds, workers=args.workers,
+                            progress=_progress_printer(), seed_start=args.seed_start)
+    print()
+    table = evaluation_table(df)
+    header = ["| Scenario | Seeds | A | B | C | Fused F |", "|---|---|---|---|---|---|"]
+    titles = {"detection": "Detection rate (ALARM on an attacked drone at or after onset). "
+                           "Simulation result.",
+              "false_alarm": "False-alarm rate on flights without an attack. Simulation result."}
+    for kind, title in titles.items():
+        rows = markdown_rows(table, kind)
+        if rows:
+            print(title)
+            print("\n".join(header + rows))
+            print()
+    if args.csv:
+        df.to_csv(args.csv, index=False)
+        print(f"Raw per-seed results saved to {args.csv}")
     return 0
 
 
@@ -502,6 +546,19 @@ def build_parser() -> argparse.ArgumentParser:
     cal.add_argument("--no-manoeuvres", action="store_true", dest="no_manoeuvres",
                      help="do not add legitimate manoeuvres to odd seeds")
     cal.set_defaults(func=cmd_calibrate)
+
+    evl = sub.add_parser("evaluate", help="README results tables: every scenario over evaluation seeds")
+    evl.add_argument("--seeds", type=int, default=50, help="evaluation seeds per scenario (default 50)")
+    evl.add_argument("--seed-start", type=int, default=5000, dest="seed_start",
+                     help="first evaluation seed (default 5000; must be >= 5000)")
+    evl.add_argument("--scenarios", default=None,
+                     help="comma-separated scenario keys (default: all, plus faulty_anchor_shift "
+                          "with its attack removed)")
+    evl.add_argument("--no-attack", default=None, dest="no_attack",
+                     help="comma-separated scenario keys to fly with their attack removed")
+    evl.add_argument("--workers", type=int, default=1, help="parallel processes")
+    evl.add_argument("--csv", default=None, help="save the raw per-seed results here")
+    evl.set_defaults(func=cmd_evaluate)
 
     sw = sub.add_parser("sweep", help="detection rates while one parameter changes")
     sw.add_argument("--param", required=True,
