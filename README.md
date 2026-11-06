@@ -78,7 +78,7 @@ on the same flight makes the blind spot visible:
 ## Quick start (Windows, PowerShell, Python 3.11)
 
 ```powershell
-git clone <your-repo-url> SwarmGuard
+git clone https://github.com/shloka-amritkar/SwarmGuard.git SwarmGuard
 cd SwarmGuard
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
@@ -220,34 +220,59 @@ better than they are.
 - **ML evaluation** uses a train/test split *by run* (`GroupShuffleSplit`, fix F6): no flight
   contributes rows to both sets.
 
-### Results (fill these from your own runs; no numbers are invented here)
+### Results
 
-Detection rate over evaluation seeds (Wilson 95 % CI). Simulation result.
+Measured on 2026-11-06 with the calibrated thresholds in `data/calibration/` (200 clean
+calibration flights per swarm configuration, target 1 %), on evaluation seeds 5000-5049
+(50 seeds per scenario, 60 s flights, `analysis.experiments.run_tasks` with `load_or_default`).
+Each cell is *detected runs / runs = rate (95 % Wilson interval)*. Simulation result.
+
+Detection rate over evaluation seeds (an ALARM on an attacked drone at or after onset). Simulation result.
 
 | Scenario | Seeds | A | B | C | Fused F |
 |---|---|---|---|---|---|
-| single_hijack | | | | | |
-| slow_drift | | | | | |
-| coordinated_pair | | | | | |
-| rigid_swarm_shift | | | | | |
-| rigid_swarm_drift | | | | | |
-| rigid_rotation | | | | | |
-| faulty_anchor_shift | | | | | |
-| intermittent_pulses | | | | | |
-| light_show_pune | | | | | |
+| single_hijack | 50 (5000-5049) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 14/50 = 28.0 % (17.5-41.7 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| slow_drift | 50 (5000-5049) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 13/50 = 26.0 % (15.9-39.6 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| coordinated_pair | 50 (5000-5049) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 28/50 = 56.0 % (42.3-68.8 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| rigid_swarm_shift | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| rigid_swarm_drift | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| rigid_rotation | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| faulty_anchor_shift | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| intermittent_pulses | 50 (5000-5049) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 16/50 = 32.0 % (20.8-45.8 %) | 50/50 = 100.0 % (92.9-100.0 %) |
+| light_show_pune | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) | 50/50 = 100.0 % (92.9-100.0 %) |
 
 False-alarm rate on clean flights. Simulation result.
 
 | Scenario | Seeds | A | B | C | Fused F |
 |---|---|---|---|---|---|
-| clean_baseline | | | | | |
-| manoeuvre_only | | | | | |
+| clean_baseline | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 1/50 = 2.0 % (0.4-10.5 %) | 1/50 = 2.0 % (0.4-10.5 %) | 0/50 = 0.0 % (0.0-7.1 %) |
+| manoeuvre_only | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 1/50 = 2.0 % (0.4-10.5 %) | 1/50 = 2.0 % (0.4-10.5 %) | 0/50 = 0.0 % (0.0-7.1 %) |
+| faulty_anchor_shift swarm, attack removed | 50 (5000-5049) | 0/50 = 0.0 % (0.0-7.1 %) | 1/50 = 2.0 % (0.4-10.5 %) | 50/50 = 100.0 % (92.9-100.0 %) | 0/50 = 0.0 % (0.0-7.1 %) |
+
+How to read these tables:
+
+- **A is 0/50 on every swarm-wide shift, drift and rotation**: the blind spot predicted by
+  `(g_i + D) - (g_j + D) = g_i - g_j`.
+- **C on single-drone attacks (26-56 %)**: C only sees anchored drones, so it detects these
+  attacks only when an attacked drone happens to carry an anchor.
+- **C's 50/50 on `faulty_anchor_shift` is not evidence that C caught the attack.** The faulty
+  anchors are part of that swarm: with the attack removed, C still alarms on 50/50 clean flights
+  (calibration could not meet the 1 % target either; it alarmed on 200/200 clean calibration
+  flights at its largest grid value, tau_c = 8.0 m). B and the fused result F are what detect
+  the attack there; F raised no false alarm on the same clean flights (0/50).
 
 Experimental ML detector, held-out test runs (from `cli.py train-ml`). Simulation result.
 
 | Runs | Accuracy | Precision | Recall | F1 | ROC-AUC | Top 3 features |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| 300 (seeds 100000-100299); split by run: 225 train (738,000 rows), 75 test (243,000 rows) | 0.938667 | 0.961153 | 0.817754 | 0.883673 | 0.948889 | cusum 0.657090, nis_mean_w 0.176673, c_residual 0.070904 |
+
+Test-set confusion (rows = drone-steps): TN 171,487, FP 2,288, FN 12,616, TP 56,609. False-positive
+rate over all label-0 rows 2,288 / 173,775 = 0.013166; on rows whose attack type is "none" (`clean_false_positive_rate` in `rf_config.json`) 0.014351.
+Recall per attack type: constant_offset 1.000000, gradual_drift 0.918730, intermittent 1.000000,
+multi_drone 0.999643, rigid_rotation 0.559063, swarm_wide 0.882551.
+Metrics are row-level (per drone per step), so they are not directly comparable with the
+per-run detection rates above. Model SHA-256 `a91574119ec8cbace70f4bdb177f871da2178ba38429c6619a9a7b2d41986b6f`.
 
 ---
 
