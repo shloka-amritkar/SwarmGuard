@@ -403,15 +403,31 @@ Data locations can be redirected with environment variables: `SWARMGUARD_DB`, `S
 
 ## Screenshots
 
-| | |
-|---|---|
-| ![Home hero with the motion-check alarm](docs/screenshots/13_hero_alarm.png) | ![Dashboard](docs/screenshots/02_dashboard.png) |
-| ![Evidence verified](docs/screenshots/14_evidence_verified.png) | ![Whole-flight camera](docs/screenshots/16_map_whole_flight.png) |
-| ![Home](docs/screenshots/01_home.png) | ![Simulator](docs/screenshots/03_simulator.png) |
-| ![Detection](docs/screenshots/05_detection.png) | ![Experiments](docs/screenshots/06_experiments.png) |
-| ![Detector D in Detection](docs/screenshots/11_detection_ml.png) | ![Detector D in Experiments](docs/screenshots/12_experiments_ml.png) |
-| ![Incidents](docs/screenshots/08_incidents.png) | ![Evidence](docs/screenshots/09_evidence.png) |
-| ![Methodology](docs/screenshots/10_methodology.png) | ![Phone width](docs/screenshots/15_mobile_home.png) |
+Desktop views captured at a 1440 x 900 viewport (top of the page, except Evidence, which is
+scrolled to the verification result). Simulation results. Full-page screenshots of every
+view, including Recovery and Methodology, are in [docs/screenshots/](docs/screenshots/).
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/01_home_hero.png" width="100%" alt="Home hero: radar scope with the motion-check alarm"><br><sub>Home hero: radar scope with the motion-check alarm</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/02_dashboard.png" width="100%" alt="Dashboard: fused verdicts for the Pune light show"><br><sub>Dashboard: fused verdicts for the Pune light show</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/03_simulator.png" width="100%" alt="Swarm Simulator: preset flight on the live map"><br><sub>Swarm Simulator: preset flight on the live map</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/04_attack_lab.png" width="100%" alt="Attack Lab: single drone hijack, results per detector"><br><sub>Attack Lab: single drone hijack, results per detector</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/05_detection.png" width="100%" alt="Detection Analysis: detector scores and the drone inspector"><br><sub>Detection Analysis: detector scores and the drone inspector</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/06_experiments.png" width="100%" alt="Experiments: calibrated thresholds with Wilson intervals"><br><sub>Experiments: calibrated thresholds with Wilson intervals</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/08_incidents.png" width="100%" alt="Incidents: case files opened by detector alarms"><br><sub>Incidents: case files opened by detector alarms</sub></td>
+    <td width="50%" align="center" valign="top"><img src="docs/screenshots/readme/09_evidence_verified.png" width="100%" alt="Evidence Centre: signed package verified"><br><sub>Evidence Centre: signed package verified</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/readme/10_phone_home.png" width="320" alt="Home at phone width (390 px)"><br><sub>Home at phone width (390 px)</sub></td>
+  </tr>
+</table>
 
 ### Using the maps
 
